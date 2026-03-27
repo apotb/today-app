@@ -3,7 +3,6 @@ import express from 'express'
 import cors from 'cors'
 import { z } from 'zod'
 import { all, get, initDb, run } from './db.js'
-import { localEventFeed } from './localEvents.js'
 import { fetchExternalEvents } from './eventsProvider.js'
 
 const app = express()
@@ -194,34 +193,6 @@ app.post('/api/interactions', async (req, res, next) => {
   }
 })
 
-app.post('/api/events/import-local', async (req, res, next) => {
-  try {
-    const location = `${req.body?.location ?? 'Local City'}`
-    for (const event of localEventFeed) {
-      await run(
-        `INSERT OR REPLACE INTO events (
-          id, title, description, starts_at, ends_at, cost, image_url, category, location, address
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          event.id,
-          event.title,
-          event.description,
-          event.startsAt,
-          event.endsAt,
-          event.cost,
-          event.imageUrl,
-          event.category,
-          location,
-          event.address ?? location,
-        ],
-      )
-    }
-    res.json({ success: true, imported: localEventFeed.length })
-  } catch (error) {
-    next(error)
-  }
-})
-
 app.post('/api/events/sync', async (req, res, next) => {
   try {
     const parsed = syncSchema.parse(req.body ?? {})
@@ -244,6 +215,12 @@ app.post('/api/events/sync', async (req, res, next) => {
       unit,
       preferredCategories,
     })
+    await run(
+      `DELETE FROM events
+       WHERE id LIKE 'local-%'
+          OR id LIKE 'seed-%'
+          OR id NOT LIKE 'tm_%' AND id NOT LIKE 'eb_%'`,
+    )
     for (const event of fetchedEvents) {
       await run(
         `INSERT OR REPLACE INTO events (
@@ -290,6 +267,7 @@ app.get('/api/events/discover', async (req, res, next) => {
       `SELECT e.*
        FROM events e
        WHERE e.starts_at BETWEEN ? AND ?
+         AND (e.id LIKE 'tm_%' OR e.id LIKE 'eb_%')
          AND NOT EXISTS (
            SELECT 1 FROM user_interactions ui
            WHERE ui.session_id = ?
@@ -407,6 +385,7 @@ app.get('/api/my-events', async (req, res, next) => {
        JOIN events e ON e.id = ui.event_id
        WHERE ui.session_id = ?
          AND ui.action IN ('like', 'attended')
+         AND (e.id LIKE 'tm_%' OR e.id LIKE 'eb_%')
        ORDER BY e.starts_at ASC`,
       [sessionId],
     )

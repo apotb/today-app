@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { localEventFeed } from './localEvents.js'
 import { fetchEventbriteEvents } from './eventbriteProvider.js'
 import { enrichWithPlaces } from './googlePlaces.js'
 
@@ -20,8 +19,11 @@ const mapCategory = (raw = '') => {
 const cleanTitle = (value = '') =>
   String(value)
     .replace(/\s+/g, ' ')
-    .replace(/[|•]+/g, ' - ')
+    .replace(/[|•]+/g, ' ')
+    .replace(/[_~`^*]+/g, ' ')
+    .replace(/[\r\n]+/g, ' ')
     .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
 
 const cleanDescription = (value = '') => {
   const trimmed = String(value).replace(/\s+/g, ' ').trim()
@@ -149,7 +151,7 @@ export const fetchExternalEvents = async ({
   merged = ensureUniqueImages(merged)
 
   if (merged.length === 0) {
-    return ensureUniqueImages(localEventFeed)
+    return []
   }
 
   const enriched = await enrichWithPlaces(merged, { location, radius, unit })

@@ -20,8 +20,11 @@ const mapCategory = (raw = '') => {
 const cleanTitle = (value = '') =>
   String(value)
     .replace(/\s+/g, ' ')
-    .replace(/[|•]+/g, ' - ')
+    .replace(/[|•]+/g, ' ')
+    .replace(/[_~`^*]+/g, ' ')
+    .replace(/[\r\n]+/g, ' ')
     .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
 
 const cleanDescription = (value = '') => {
   const trimmed = String(value).replace(/\s+/g, ' ').trim()

@@ -126,7 +126,7 @@ export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
       </div>
       <div className="card-body">
         <p className="chip">{event.category}</p>
-        <h2>{event.title}</h2>
+        <h2 className="card-title">{event.title}</h2>
         <p>{formatDateTime12h(event.starts_at)}</p>
         <p>{event.location}</p>
         <p>{formatPrice(event.cost)}</p>

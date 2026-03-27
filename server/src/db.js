@@ -139,6 +139,31 @@ export const initDb = async () => {
 
   await ensureColumn('events', 'address', 'TEXT')
 
+  await run(
+    `DELETE FROM user_interactions
+     WHERE event_id IN (
+       SELECT id FROM events
+       WHERE id LIKE 'local-%'
+          OR id LIKE 'seed-%'
+          OR title LIKE '%AI Mereting%'
+     )`,
+  )
+  await run(
+    `DELETE FROM user_event_attendance
+     WHERE event_id IN (
+       SELECT id FROM events
+       WHERE id LIKE 'local-%'
+          OR id LIKE 'seed-%'
+          OR title LIKE '%AI Mereting%'
+     )`,
+  )
+  await run(
+    `DELETE FROM events
+     WHERE id LIKE 'local-%'
+        OR id LIKE 'seed-%'
+        OR title LIKE '%AI Mereting%'`,
+  )
+
   await run(`
     CREATE TABLE IF NOT EXISTS user_preferences (
       session_id TEXT NOT NULL,

@@ -215,6 +215,13 @@ main {
   font-size: 0.9rem;
 }
 
+.card-title {
+  margin: 0 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .description {
   color: #506080;
 }
