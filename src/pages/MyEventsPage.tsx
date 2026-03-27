@@ -72,6 +72,19 @@ export function MyEventsPage() {
     })
   }, [events, nowMs])
 
+  if (loading) {
+    return (
+      <div className="page page-events-loading">
+        <h1>Events</h1>
+        <div className="events-loading events-loading-full" role="status">
+          <div className="spinner spinner-lg" aria-hidden />
+          <p className="events-loading-title">Loading your events…</p>
+          <p className="events-loading-sub">Syncing with the server</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page">
       <h1>Events</h1>
@@ -84,16 +97,7 @@ export function MyEventsPage() {
         })}{' '}
         (no past events)
       </p>
-      {loading ? (
-        <div className="events-loading">
-          <div className="spinner" role="status" aria-label="Loading events" />
-          <span>Loading your events…</span>
-        </div>
-      ) : error ? (
-        <p className="error">{error}</p>
-      ) : (
-        <EventCalendar events={upcoming} onSelect={setSelected} />
-      )}
+      {error ? <p className="error">{error}</p> : <EventCalendar events={upcoming} onSelect={setSelected} />}
       {selected ? <EventDetailsModal event={selected} onClose={() => setSelected(null)} /> : null}
     </div>
   )

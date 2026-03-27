@@ -33,18 +33,30 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
       setAnimating(true)
       const targetX = direction === 'right' ? 420 : -420
       const targetRotate = direction === 'right' ? 14 : -14
-      await controls.start({
-        x: targetX,
-        y: 0,
-        rotate: targetRotate,
-        opacity: 0,
-        transition: { duration: 0.22, ease: 'easeOut' },
-      })
-      await onSwipe(direction)
-      x.set(0)
-      y.set(0)
-      controls.set({ x: 0, y: 0, rotate: 0, opacity: 1 })
-      setAnimating(false)
+      try {
+        await controls.start({
+          x: targetX,
+          y: 0,
+          rotate: targetRotate,
+          opacity: 0,
+          transition: { duration: 0.22, ease: 'easeOut' },
+        })
+        await onSwipe(direction)
+        // Do not reset motion state here: parent replaces this card by key — resetting snaps the
+        // OLD event/image back visible for a frame before unmount (the “flash” users saw).
+      } catch {
+        x.set(0)
+        y.set(0)
+        await controls.start({
+          x: 0,
+          y: 0,
+          rotate: 0,
+          opacity: 1,
+          transition: { duration: 0.2, ease: 'easeOut' },
+        })
+      } finally {
+        setAnimating(false)
+      }
     },
     [animating, imageReady, onSwipe, controls, x, y],
   )
@@ -127,10 +139,14 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
           <div className="card-image-skeleton shimmer" aria-busy="true" aria-label="Loading image" />
         ) : null}
         <img
+          key={`${event.id}:${event.image_url}`}
           src={event.image_url}
           alt={event.title}
           className="card-image"
-          style={{ opacity: imageReady ? 1 : 0 }}
+          style={{
+            opacity: imageReady ? 1 : 0,
+            visibility: imageReady ? 'visible' : 'hidden',
+          }}
           decoding="async"
           fetchPriority="high"
           onLoad={() => setImageReady(true)}
