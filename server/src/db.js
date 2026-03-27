@@ -1,43 +1,45 @@
+import fs from 'node:fs'
 import path from 'node:path'
-import sqlite3 from 'sqlite3'
+import { DatabaseSync } from 'node:sqlite'
 
 const dbPath =
   process.env.TODAY_DB_PATH?.trim() || path.join(process.cwd(), 'server', 'today.db')
 
-const db = new sqlite3.Database(dbPath)
+fs.mkdirSync(path.dirname(dbPath), { recursive: true })
 
-const run = (sql, params = []) =>
-  new Promise((resolve, reject) => {
-    db.run(sql, params, function onRun(err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve({ lastID: this.lastID, changes: this.changes })
-    })
-  })
+/** Built-in SQLite (Node ≥22.13)—no native `sqlite3` addon, avoids GLIBC/prebuild issues on hosts like Render. */
+const db = new DatabaseSync(dbPath)
 
-const all = (sql, params = []) =>
-  new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(rows)
+const run = (sql, params = []) => {
+  try {
+    const stmt = db.prepare(sql)
+    const result = stmt.run(...params)
+    return Promise.resolve({
+      lastID: Number(result.lastInsertRowid ?? 0),
+      changes: Number(result.changes ?? 0),
     })
-  })
+  } catch (err) {
+    return Promise.reject(err)
+  }
+}
 
-const get = (sql, params = []) =>
-  new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(row)
-    })
-  })
+const all = (sql, params = []) => {
+  try {
+    const stmt = db.prepare(sql)
+    return Promise.resolve(stmt.all(...params))
+  } catch (err) {
+    return Promise.reject(err)
+  }
+}
+
+const get = (sql, params = []) => {
+  try {
+    const stmt = db.prepare(sql)
+    return Promise.resolve(stmt.get(...params))
+  } catch (err) {
+    return Promise.reject(err)
+  }
+}
 
 const now = Date.now()
 const inHours = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString()
@@ -148,8 +150,6 @@ export const initDb = async () => {
   await ensureColumn('events', 'source_url', 'TEXT')
   await ensureColumn('events', 'series_key', 'TEXT')
 
-  await ensureColumn('user_questionnaire_answers', 'tags_json', 'TEXT')
-
   await run(`
     CREATE TABLE IF NOT EXISTS user_tag_scores (
       session_id TEXT NOT NULL,
@@ -216,6 +216,8 @@ export const initDb = async () => {
       PRIMARY KEY (session_id, question_id)
     )
   `)
+
+  await ensureColumn('user_questionnaire_answers', 'tags_json', 'TEXT')
 
   await run(`
     CREATE TABLE IF NOT EXISTS user_event_attendance (

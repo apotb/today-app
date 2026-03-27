@@ -13,8 +13,8 @@ Today is a full-stack local event discovery app with a Tinder-style swipe interf
   - REST API for preferences, discovery, interactions, and saved events
   - Validation using `zod`
   - Recommendation scoring from preferences + interaction history
-- **Database (`SQLite`)**
-  - Local DB file: `server/today.db`
+- **Database (`SQLite` via Node `node:sqlite`)**
+  - Local DB file: `server/today.db` (requires **Node 22.13+** for the API)
   - Seeded sample events on first boot
 
 ## Folder structure
@@ -249,12 +249,11 @@ SQLite on Render’s free tier is stored on an **ephemeral** disk (data can rese
 - **Blueprint / YAML errors**  
   `render.yaml` must be at the **repository root** of the GitHub repo you connect (same folder as `package.json`).
 
-- **`GLIBC_2.38' not found` or sqlite3 .node errors at start**  
-  Prebuilt `sqlite3` binaries can target a newer Linux than Render uses. The blueprint runs **`npm rebuild sqlite3 --build-from-source`** after install so it compiles on Render. If you created the service manually, set **Build Command** to:  
-  `npm ci --omit=dev && npm rebuild sqlite3 --build-from-source`
+- **Node version**  
+  The API uses **`node:sqlite`** (built into Node). Use **Node 22.13+** locally (`nvm install 22` / `fnm install 22`) and **`NODE_VERSION=22`** on Render (see `render.yaml`).
 
 - **Still stuck**  
-  In Render → your service → **Logs**; copy the **last 30–40 lines** of the failing **build** or **deploy** log—that usually states the exact error (e.g. `sqlite3` compile, wrong Node version).
+  In Render → your service → **Logs**; copy the **last 30–40 lines** of the failing **build** or **deploy** log—that usually states the exact error (e.g. wrong Node version, missing env).
 
 ### Server env
 
