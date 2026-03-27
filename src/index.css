@@ -1,0 +1,237 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f3f5fb;
+  color: #10213f;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e4e8f1;
+  position: sticky;
+  top: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.brand img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.top-nav nav {
+  display: flex;
+  gap: 16px;
+}
+
+.top-nav nav a {
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.top-nav nav a.active {
+  background: #e8edff;
+  color: #2a4dcd;
+}
+
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+.page h1 {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 22px;
+  border: 1px solid #e4e8f1;
+}
+
+.swipe-card {
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid #e4e8f1;
+  box-shadow: 0 14px 35px rgba(15, 32, 70, 0.09);
+}
+
+.card-image {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+}
+
+.card-body {
+  padding: 18px;
+}
+
+.chip {
+  display: inline-block;
+  background: #e8edff;
+  color: #2741b6;
+  padding: 6px 10px;
+  border-radius: 999px;
+  margin: 0 0 8px;
+  text-transform: capitalize;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.description {
+  color: #506080;
+}
+
+.card-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #2f55d4;
+  color: #fff;
+}
+
+.btn-secondary {
+  background: #ffdfe1;
+  color: #8f2230;
+}
+
+.btn-ghost {
+  background: #eef1f7;
+  color: #334261;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.tag {
+  border: 1px solid #d9dff0;
+  background: #fff;
+  padding: 8px 12px;
+  border-radius: 999px;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.tag.active {
+  background: #2f55d4;
+  border-color: #2f55d4;
+  color: #fff;
+}
+
+.calendar-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.calendar-day {
+  background: #fff;
+  border: 1px solid #e4e8f1;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.calendar-day h3 {
+  margin-top: 0;
+}
+
+.calendar-day ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.calendar-day button {
+  width: 100%;
+  border: 1px solid #dbe2f3;
+  border-radius: 10px;
+  background: #fafcff;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 33, 63, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.modal {
+  width: min(560px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.modal img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.error {
+  color: #ac1d38;
+}
+
+.status,
+.empty {
+  color: #506080;
+}
+
+@media (max-width: 760px) {
+  .card-actions {
+    grid-template-columns: 1fr;
+  }
+}
