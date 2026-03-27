@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
 import { MyEventsPage } from './pages/MyEventsPage'
 import { OnboardingPage } from './pages/OnboardingPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { getSessionId } from './lib/session'
 import { api } from './api/client'
 import { useEffect, useState } from 'react'
@@ -46,6 +47,7 @@ function App() {
       >
         <Route index element={<HomePage />} />
         <Route path="my-events" element={<MyEventsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
     </Routes>
   )

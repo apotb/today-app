@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import { EventCalendar } from '../components/EventCalendar'
 import { EventDetailsModal } from '../components/EventDetailsModal'
 import { getSessionId } from '../lib/session'
+import { formatDateTime12h } from '../lib/format'
 import type { EventItem } from '../types/models'
 
 export function MyEventsPage() {
@@ -51,7 +52,7 @@ export function MyEventsPage() {
               <li key={event.id}>
                 <div>
                   <p className="past-title">{event.title}</p>
-                  <p className="status">{new Date(event.starts_at).toLocaleString()}</p>
+                  <p className="status">{formatDateTime12h(event.starts_at)}</p>
                 </div>
                 <div className="attendance-actions">
                   <button

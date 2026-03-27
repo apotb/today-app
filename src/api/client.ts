@@ -1,4 +1,5 @@
 import type { EventCategory, EventItem } from '../types/models'
+import type { StoredLocation } from '../lib/location'
 
 const API_BASE = 'http://localhost:4000/api'
 
@@ -37,6 +38,12 @@ export const api = {
     request<{ success: boolean; imported: number }>('/events/import-local', {
       method: 'POST',
       body: JSON.stringify({ location }),
+    }),
+
+  syncEvents: (location: StoredLocation | null) =>
+    request<{ success: boolean; imported: number }>('/events/sync', {
+      method: 'POST',
+      body: JSON.stringify({ location: location ?? {} }),
     }),
 
   discoverEvents: (sessionId: string) =>

@@ -3,6 +3,7 @@ import cors from 'cors'
 import { z } from 'zod'
 import { all, get, initDb, run } from './db.js'
 import { localEventFeed } from './localEvents.js'
+import { fetchExternalEvents } from './eventsProvider.js'
 
 const app = express()
 const port = 4000
@@ -66,6 +67,12 @@ const attendanceSchema = z.object({
   sessionId: z.string().min(1),
   eventId: z.string().min(1),
   status: z.enum(['attended', 'missed']),
+})
+
+const locationSchema = z.object({
+  zip: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 })
 
 const getWindow = () => {
@@ -193,6 +200,34 @@ app.post('/api/events/import-local', async (req, res, next) => {
       )
     }
     res.json({ success: true, imported: localEventFeed.length })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/events/sync', async (req, res, next) => {
+  try {
+    const location = locationSchema.parse(req.body?.location ?? {})
+    const fetchedEvents = await fetchExternalEvents(location)
+    for (const event of fetchedEvents) {
+      await run(
+        `INSERT OR REPLACE INTO events (
+          id, title, description, starts_at, ends_at, cost, image_url, category, location
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          event.id,
+          event.title,
+          event.description,
+          event.startsAt,
+          event.endsAt,
+          event.cost,
+          event.imageUrl,
+          event.category,
+          event.location,
+        ],
+      )
+    }
+    res.json({ success: true, imported: fetchedEvents.length })
   } catch (error) {
     next(error)
   }

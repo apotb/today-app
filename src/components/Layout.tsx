@@ -14,6 +14,7 @@ export function Layout() {
             Home
           </NavLink>
           <NavLink to="/my-events">My Events</NavLink>
+          <NavLink to="/settings">Settings</NavLink>
         </nav>
       </header>
       <main>

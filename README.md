@@ -59,11 +59,17 @@ Base URL: `http://localhost:4000/api`
   - Fetch saved categories for a user session.
 - `POST /preferences`
   - Save onboarding categories.
+- `POST /onboarding/responses`
+  - Save yes/no questionnaire answers and mapped categories.
+- `POST /events/sync`
+  - Fetch and normalize external events based on ZIP or coordinates.
 - `GET /events/discover?sessionId=...`
   - Returns events in next 24 hours not already liked/disliked.
   - Uses scoring from preferences and historical interactions.
 - `POST /interactions`
-  - Store interaction (`like`, `dislike`, `attended`) per event.
+  - Store swipe interaction (`like`, `dislike`) per event.
+- `POST /attendance`
+  - Save post-event attendance status (`attended`, `missed`).
 - `GET /events/:eventId`
   - Event detail endpoint.
 - `GET /my-events?sessionId=...`
@@ -149,6 +155,16 @@ curl -X POST http://localhost:4000/api/interactions \
     "action": "attended"
   }'
 ```
+
+## Ticketmaster API key setup (real events)
+
+Set environment variable before running the server:
+
+```bash
+export TICKETMASTER_API_KEY="your_ticketmaster_key"
+```
+
+Without the key, the app gracefully falls back to the local event feed.
 
 ## Run locally
 

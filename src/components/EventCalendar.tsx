@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { EventItem } from '../types/models'
+import { formatTime12h } from '../lib/format'
 
 type Props = {
   events: EventItem[]
@@ -34,7 +35,7 @@ export function EventCalendar({ events, onSelect }: Props) {
             {dayEvents.map((event) => (
               <li key={event.id}>
                 <button onClick={() => onSelect(event)}>
-                  <span>{new Date(event.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>{formatTime12h(event.starts_at)}</span>
                   <span>{event.title}</span>
                 </button>
               </li>

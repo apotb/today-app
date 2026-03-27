@@ -77,22 +77,38 @@ main {
 }
 
 .swipe-card {
+  position: relative;
   background: #fff;
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid #e4e8f1;
   box-shadow: 0 14px 35px rgba(15, 32, 70, 0.09);
-  transition: transform 200ms ease, opacity 200ms ease;
+  touch-action: pan-y;
+  cursor: grab;
 }
 
-.swipe-left {
-  transform: translateX(-28px) rotate(-2deg);
-  opacity: 0.2;
+.swipe-badge {
+  position: absolute;
+  top: 18px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border: 2px solid;
+  background: #fff;
+  pointer-events: none;
 }
 
-.swipe-right {
-  transform: translateX(28px) rotate(2deg);
-  opacity: 0.2;
+.swipe-badge.like {
+  left: 14px;
+  color: #00b100;
+  border-color: #00b100;
+}
+
+.swipe-badge.nope {
+  right: 14px;
+  color: #cf2c2c;
+  border-color: #cf2c2c;
 }
 
 .card-image {
@@ -119,13 +135,6 @@ main {
 
 .description {
   color: #506080;
-}
-
-.card-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding: 0 18px 18px;
 }
 
 .btn {
@@ -260,6 +269,25 @@ main {
   gap: 8px;
 }
 
+.settings-panel {
+  max-width: 760px;
+}
+
+.settings-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.input {
+  min-width: 170px;
+  padding: 10px 12px;
+  border: 1px solid #d6deee;
+  border-radius: 10px;
+  font: inherit;
+}
+
 .calendar-day h3 {
   margin-top: 0;
 }
@@ -316,10 +344,6 @@ main {
 }
 
 @media (max-width: 760px) {
-  .card-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .question-actions {
     grid-template-columns: 1fr;
   }

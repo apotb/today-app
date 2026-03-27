@@ -1,4 +1,5 @@
 import type { EventItem } from '../types/models'
+import { formatDateTime12h } from '../lib/format'
 
 type Props = {
   event: EventItem
@@ -11,7 +12,7 @@ export function EventDetailsModal({ event, onClose }: Props) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <img src={event.image_url} alt={event.title} />
         <h3>{event.title}</h3>
-        <p>{new Date(event.starts_at).toLocaleString()}</p>
+        <p>{formatDateTime12h(event.starts_at)}</p>
         <p>{event.location}</p>
         <p>{event.cost && event.cost > 0 ? `$${event.cost}` : 'Free'}</p>
         <p>{event.description}</p>
