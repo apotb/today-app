@@ -131,6 +131,11 @@ main {
   transform: scale(0.98);
 }
 
+.image-nav-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .image-nav-btn.left {
   color: #cf2c2c;
 }

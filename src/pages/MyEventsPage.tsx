@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { EventCalendar } from '../components/EventCalendar'
 import { EventDetailsModal } from '../components/EventDetailsModal'
 import { getSessionId } from '../lib/session'
 import { formatDateTime12h } from '../lib/format'
 import type { EventItem } from '../types/models'
+import { getStoredLocation } from '../lib/location'
+import {
+  getStoredDiscoverySettings,
+  onDiscoverySettingsChanged,
+} from '../lib/discoverySettings'
+import { maybeNotifyUpcoming } from '../lib/notifications'
 
 export function MyEventsPage() {
   const [events, setEvents] = useState<EventItem[]>([])
@@ -12,17 +18,28 @@ export function MyEventsPage() {
   const [error, setError] = useState('')
   const [referenceNow] = useState(() => Date.now())
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const response = await api.getMyEvents(getSessionId())
-        setEvents(response.events)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load your events.')
-      }
+  const refreshEvents = useCallback(async () => {
+    try {
+      const settings = getStoredDiscoverySettings()
+      await api.syncEvents(
+        getSessionId(),
+        getStoredLocation(),
+        settings.radius,
+        settings.unit,
+      )
+      const response = await api.getMyEvents(getSessionId())
+      setEvents(response.events)
+      await maybeNotifyUpcoming(response.events)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load your events.')
     }
-    void run()
   }, [])
+
+  useEffect(() => {
+    void refreshEvents()
+  }, [])
+
+  useEffect(() => onDiscoverySettingsChanged(() => void refreshEvents()), [refreshEvents])
 
   const setAttendance = async (eventId: string, status: 'attended' | 'missed') => {
     await api.setAttendance(getSessionId(), eventId, status)
@@ -33,9 +50,11 @@ export function MyEventsPage() {
     )
   }
 
-  const upcoming = events.filter(
-    (event) => new Date(event.starts_at).getTime() >= referenceNow,
-  )
+  const in24h = referenceNow + 24 * 60 * 60 * 1000
+  const upcoming = events.filter((event) => {
+    const starts = new Date(event.starts_at).getTime()
+    return starts >= referenceNow && starts <= in24h
+  })
   const past = events.filter((event) => new Date(event.starts_at).getTime() < referenceNow)
 
   return (

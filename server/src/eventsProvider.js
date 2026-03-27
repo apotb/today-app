@@ -24,6 +24,9 @@ const normalizeTicketmasterEvent = (event) => {
   const classification = event?.classifications?.[0]
   const categoryRaw = classification?.segment?.name ?? classification?.genre?.name ?? ''
   const image = event?.images?.find((img) => img.ratio === '16_9')?.url ?? event?.images?.[0]?.url
+  const venueAddress = [venue?.address?.line1, venue?.city?.name, venue?.state?.stateCode]
+    .filter(Boolean)
+    .join(', ')
   return {
     id: `tm_${event.id ?? randomUUID()}`,
     title: event.name ?? 'Untitled Event',
@@ -31,9 +34,10 @@ const normalizeTicketmasterEvent = (event) => {
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
     cost: event?.priceRanges?.[0]?.min ?? 0,
-    imageUrl: image ?? 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=900&q=80',
+    imageUrl: image ?? null,
     category: mapCategory(categoryRaw),
     location: venue?.name ?? 'Local Venue',
+    address: venueAddress || venue?.name || 'Local Venue',
   }
 }
 
@@ -56,7 +60,21 @@ const filterByPreferences = (events, preferredCategories) => {
   return filtered.length > 0 ? filtered : events
 }
 
-const fetchTicketmasterEvents = async (location = {}) => {
+const ensureUniqueImages = (events) => {
+  const seen = new Set()
+  return events.map((event) => {
+    const currentImage = event?.imageUrl ? String(event.imageUrl) : ''
+    if (currentImage && !seen.has(currentImage)) {
+      seen.add(currentImage)
+      return event
+    }
+    const fallback = `https://picsum.photos/seed/today-${encodeURIComponent(event.id)}/1200/675`
+    seen.add(fallback)
+    return { ...event, imageUrl: fallback }
+  })
+}
+
+const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles') => {
   const key = process.env.TICKETMASTER_API_KEY
   if (!key) {
     return []
@@ -75,8 +93,8 @@ const fetchTicketmasterEvents = async (location = {}) => {
   if (location.zip) params.set('postalCode', location.zip)
   if (location.latitude && location.longitude) {
     params.set('latlong', `${location.latitude},${location.longitude}`)
-    params.set('radius', '25')
-    params.set('unit', 'miles')
+    params.set('radius', `${radius}`)
+    params.set('unit', unit === 'km' ? 'km' : 'miles')
   }
 
   try {
@@ -98,20 +116,23 @@ const fetchTicketmasterEvents = async (location = {}) => {
 
 export const fetchExternalEvents = async ({
   location = {},
+  radius = 25,
+  unit = 'miles',
   preferredCategories = [],
 } = {}) => {
   const [ticketmaster, eventbrite] = await Promise.all([
-    fetchTicketmasterEvents(location),
-    fetchEventbriteEvents({ location }),
+    fetchTicketmasterEvents(location, radius, unit),
+    fetchEventbriteEvents({ location, radius, unit }),
   ])
 
   let merged = uniqById([...ticketmaster, ...eventbrite])
   merged = filterByPreferences(merged, preferredCategories)
+  merged = ensureUniqueImages(merged)
 
   if (merged.length === 0) {
-    return localEventFeed
+    return ensureUniqueImages(localEventFeed)
   }
 
-  const enriched = await enrichWithPlaces(merged, { location })
-  return enriched.length > 0 ? enriched : merged
+  const enriched = await enrichWithPlaces(merged, { location, radius, unit })
+  return ensureUniqueImages(enriched.length > 0 ? enriched : merged)
 }

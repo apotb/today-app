@@ -1,3 +1,4 @@
+import './env.js'
 import express from 'express'
 import cors from 'cors'
 import { z } from 'zod'
@@ -78,6 +79,8 @@ const locationSchema = z.object({
 const syncSchema = z.object({
   sessionId: z.string().min(1).optional(),
   location: locationSchema.optional(),
+  radius: z.number().positive().max(200).optional(),
+  unit: z.enum(['miles', 'km']).optional(),
 })
 
 const getWindow = () => {
@@ -189,8 +192,8 @@ app.post('/api/events/import-local', async (req, res, next) => {
     for (const event of localEventFeed) {
       await run(
         `INSERT OR REPLACE INTO events (
-          id, title, description, starts_at, ends_at, cost, image_url, category, location
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, title, description, starts_at, ends_at, cost, image_url, category, location, address
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           event.id,
           event.title,
@@ -201,6 +204,7 @@ app.post('/api/events/import-local', async (req, res, next) => {
           event.imageUrl,
           event.category,
           location,
+          event.address ?? location,
         ],
       )
     }
@@ -214,6 +218,8 @@ app.post('/api/events/sync', async (req, res, next) => {
   try {
     const parsed = syncSchema.parse(req.body ?? {})
     const location = locationSchema.parse(parsed.location ?? {})
+    const radius = parsed.radius ?? 25
+    const unit = parsed.unit ?? 'miles'
 
     let preferredCategories = []
     if (parsed.sessionId) {
@@ -226,13 +232,15 @@ app.post('/api/events/sync', async (req, res, next) => {
 
     const fetchedEvents = await fetchExternalEvents({
       location,
+      radius,
+      unit,
       preferredCategories,
     })
     for (const event of fetchedEvents) {
       await run(
         `INSERT OR REPLACE INTO events (
-          id, title, description, starts_at, ends_at, cost, image_url, category, location
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, title, description, starts_at, ends_at, cost, image_url, category, location, address
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           event.id,
           event.title,
@@ -243,6 +251,7 @@ app.post('/api/events/sync', async (req, res, next) => {
           event.imageUrl,
           event.category,
           event.location,
+          event.address ?? event.location,
         ],
       )
     }

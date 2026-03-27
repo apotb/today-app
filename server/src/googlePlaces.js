@@ -12,7 +12,7 @@ const pickPhotoUrl = (photoRef, key) => {
   return `https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`
 }
 
-async function textSearch(query, { location = {} } = {}) {
+async function textSearch(query, { location = {}, radius = 25, unit = 'miles' } = {}) {
   const key = process.env.GOOGLE_PLACES_API_KEY
   if (!key) return null
 
@@ -26,7 +26,8 @@ async function textSearch(query, { location = {} } = {}) {
 
   if (location.latitude && location.longitude) {
     params.set('location', `${location.latitude},${location.longitude}`)
-    params.set('radius', '25000')
+    const metersPerUnit = unit === 'km' ? 1000 : 1609.34
+    params.set('radius', `${Math.round(radius * metersPerUnit)}`)
   }
 
   const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?${params.toString()}`
@@ -48,7 +49,7 @@ async function textSearch(query, { location = {} } = {}) {
   }
 }
 
-export async function enrichWithPlaces(events, { location = {} } = {}) {
+export async function enrichWithPlaces(events, { location = {}, radius = 25, unit = 'miles' } = {}) {
   const key = process.env.GOOGLE_PLACES_API_KEY
   if (!key) return events
 
@@ -65,7 +66,7 @@ export async function enrichWithPlaces(events, { location = {} } = {}) {
     }
 
     const query = `${event.title} ${event.location ?? ''}`.trim()
-    const place = await textSearch(query, { location })
+    const place = await textSearch(query, { location, radius, unit })
     if (!place) {
       enriched.push(event)
       continue
@@ -81,6 +82,7 @@ export async function enrichWithPlaces(events, { location = {} } = {}) {
     enriched.push({
       ...event,
       location: betterLocation ?? event.location,
+      address: formattedAddress ?? event.address ?? event.location,
       imageUrl: photoUrl ?? event.imageUrl,
     })
 

@@ -50,6 +50,7 @@ const seedEvents = [
     imageUrl: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=900&q=80',
     category: 'sports-fitness',
     location: 'Harbor Park',
+    address: '110 Harbor Park Dr, Waterfront District',
   },
   {
     id: randomUUID(),
@@ -61,6 +62,7 @@ const seedEvents = [
     imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900&q=80',
     category: 'music-nightlife',
     location: 'Blue Room Club',
+    address: '22 Main St, Downtown',
   },
   {
     id: randomUUID(),
@@ -72,6 +74,7 @@ const seedEvents = [
     imageUrl: 'https://images.unsplash.com/photo-1593113630400-ea4288922497?w=900&q=80',
     category: 'volunteering-community',
     location: 'Riverside Trail',
+    address: '501 Riverside Trailhead, Greenway',
   },
   {
     id: randomUUID(),
@@ -83,6 +86,7 @@ const seedEvents = [
     imageUrl: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=900&q=80',
     category: 'arts-culture',
     location: 'City Museum',
+    address: '15 Museum Ave, Arts Quarter',
   },
   {
     id: randomUUID(),
@@ -94,6 +98,7 @@ const seedEvents = [
     imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=900&q=80',
     category: 'food-drink',
     location: 'Market Square',
+    address: '300 Market Square, Central District',
   },
   {
     id: randomUUID(),
@@ -105,8 +110,17 @@ const seedEvents = [
     imageUrl: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?w=900&q=80',
     category: 'entrepreneurship-startups',
     location: 'Launch House',
+    address: '87 Innovation Blvd, Tech Park',
   },
 ]
+
+const ensureColumn = async (table, column, definition) => {
+  const columns = await all(`PRAGMA table_info(${table})`)
+  const hasColumn = columns.some((item) => item.name === column)
+  if (!hasColumn) {
+    await run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+  }
+}
 
 export const initDb = async () => {
   await run(`
@@ -119,9 +133,12 @@ export const initDb = async () => {
       cost REAL,
       image_url TEXT NOT NULL,
       category TEXT NOT NULL,
-      location TEXT NOT NULL
+      location TEXT NOT NULL,
+      address TEXT
     )
   `)
+
+  await ensureColumn('events', 'address', 'TEXT')
 
   await run(`
     CREATE TABLE IF NOT EXISTS user_preferences (
@@ -172,8 +189,8 @@ export const initDb = async () => {
     for (const event of seedEvents) {
       await run(
         `INSERT INTO events (
-          id, title, description, starts_at, ends_at, cost, image_url, category, location
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, title, description, starts_at, ends_at, cost, image_url, category, location, address
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           event.id,
           event.title,
@@ -184,6 +201,7 @@ export const initDb = async () => {
           event.imageUrl,
           event.category,
           event.location,
+          event.address ?? event.location,
         ],
       )
     }

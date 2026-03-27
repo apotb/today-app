@@ -42,14 +42,14 @@ const normalizeEventbrite = (event) => {
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(end).toISOString(),
     cost: event?.is_free ? 0 : 0,
-    imageUrl:
-      image ?? 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=900&q=80',
+    imageUrl: image ?? null,
     category: mapCategory(categoryRaw),
     location: venueName && venueAddress ? `${venueName} · ${venueAddress}` : venueName ?? 'Local Venue',
+    address: venueAddress ?? venueName ?? 'Local Venue',
   }
 }
 
-export async function fetchEventbriteEvents({ location = {} } = {}) {
+export async function fetchEventbriteEvents({ location = {}, radius = 25, unit = 'miles' } = {}) {
   const token = process.env.EVENTBRITE_API_TOKEN
   if (!token) return []
 
@@ -63,16 +63,17 @@ export async function fetchEventbriteEvents({ location = {} } = {}) {
     sort_by: 'date',
   })
 
+  const within = `${radius}${unit === 'km' ? 'km' : 'mi'}`
   if (location.zip) {
     params.set('location.address', location.zip)
-    params.set('location.within', '25mi')
+    params.set('location.within', within)
   } else if (location.latitude && location.longitude) {
     params.set('location.latitude', `${location.latitude}`)
     params.set('location.longitude', `${location.longitude}`)
-    params.set('location.within', '25mi')
+    params.set('location.within', within)
   } else {
     params.set('location.address', 'United States')
-    params.set('location.within', '25mi')
+    params.set('location.within', within)
   }
 
   try {

@@ -14,6 +14,7 @@ export const localEventFeed = [
     imageUrl: 'https://images.unsplash.com/photo-1558403194-611308249627?w=900&q=80',
     category: 'tech-ai',
     location: 'Downtown Hub',
+    address: '480 Center St, Downtown',
   },
   {
     id: randomUUID(),
@@ -25,6 +26,7 @@ export const localEventFeed = [
     imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900&q=80',
     category: 'music-nightlife',
     location: 'Skyline Terrace',
+    address: '90 Skyline Ave, Midtown',
   },
   {
     id: randomUUID(),
@@ -36,6 +38,7 @@ export const localEventFeed = [
     imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=900&q=80',
     category: 'markets',
     location: 'Riverfront Plaza',
+    address: '12 Riverfront Plaza, Old Town',
   },
   {
     id: randomUUID(),
@@ -47,6 +50,7 @@ export const localEventFeed = [
     imageUrl: 'https://images.unsplash.com/photo-1527224538127-2104bb71c51b?w=900&q=80',
     category: 'comedy-improv',
     location: 'Laugh Lab',
+    address: '7 Stage Ln, Theater District',
   },
   {
     id: randomUUID(),
@@ -58,5 +62,6 @@ export const localEventFeed = [
     imageUrl: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=900&q=80',
     category: 'volunteering-community',
     location: 'Hope Center',
+    address: '205 Hope St, West Side',
   },
 ]

@@ -14,6 +14,9 @@ export function EventDetailsModal({ event, onClose }: Props) {
         <h3>{event.title}</h3>
         <p>{formatDateTime12h(event.starts_at)}</p>
         <p>{event.location}</p>
+        <p>
+          <strong>Address:</strong> {event.address ?? event.location}
+        </p>
         <p>{event.cost && event.cost > 0 ? `$${event.cost}` : 'Free'}</p>
         <p>{event.description}</p>
         <button className="btn btn-primary" onClick={onClose}>

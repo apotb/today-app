@@ -1,5 +1,6 @@
 import type { EventCategory, EventItem } from '../types/models'
 import type { StoredLocation } from '../lib/location'
+import type { DistanceUnit } from '../lib/discoverySettings'
 
 const API_BASE = '/api'
 
@@ -40,10 +41,15 @@ export const api = {
       body: JSON.stringify({ location }),
     }),
 
-  syncEvents: (sessionId: string, location: StoredLocation | null) =>
+  syncEvents: (
+    sessionId: string,
+    location: StoredLocation | null,
+    radius: number,
+    unit: DistanceUnit,
+  ) =>
     request<{ success: boolean; imported: number }>('/events/sync', {
       method: 'POST',
-      body: JSON.stringify({ sessionId, location: location ?? {} }),
+      body: JSON.stringify({ sessionId, location: location ?? {}, radius, unit }),
     }),
 
   discoverEvents: (sessionId: string) =>

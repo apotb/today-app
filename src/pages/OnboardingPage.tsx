@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import { PreferenceQuiz } from '../components/PreferenceQuiz'
 import { getSessionId } from '../lib/session'
 import type { EventCategory } from '../types/models'
+import { getStoredDiscoverySettings } from '../lib/discoverySettings'
 import {
   getStoredLocation,
   requestBrowserLocation,
@@ -25,7 +26,8 @@ export function OnboardingPage({ onComplete }: Props) {
     answers: Array<{ questionId: string; answer: boolean; categories: EventCategory[] }>,
   ) => {
     const sessionId = getSessionId()
-    await api.syncEvents(sessionId, location)
+    const settings = getStoredDiscoverySettings()
+    await api.syncEvents(sessionId, location, settings.radius, settings.unit)
     await api.saveOnboardingResponses(sessionId, answers)
     await api.savePreferences(sessionId, categories)
     onComplete()

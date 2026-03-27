@@ -62,7 +62,7 @@ Base URL: `http://localhost:4000/api`
 - `POST /onboarding/responses`
   - Save yes/no questionnaire answers and mapped categories.
 - `POST /events/sync`
-  - Fetch and normalize external events based on ZIP or coordinates.
+  - Fetch and normalize external events based on ZIP/coordinates, user preferences, and radius.
 - `GET /events/discover?sessionId=...`
   - Returns events in next 24 hours not already liked/disliked.
   - Uses scoring from preferences and historical interactions.
@@ -87,6 +87,7 @@ Base URL: `http://localhost:4000/api`
 - `image_url TEXT NOT NULL`
 - `category TEXT NOT NULL`
 - `location TEXT NOT NULL`
+- `address TEXT`
 
 ### `user_preferences`
 - `session_id TEXT NOT NULL`
@@ -156,15 +157,30 @@ curl -X POST http://localhost:4000/api/interactions \
   }'
 ```
 
-## Ticketmaster API key setup (real events)
+## API keys and local env setup
 
-Set environment variable before running the server:
+The app supports:
+- `TICKETMASTER_API_KEY`
+- `EVENTBRITE_API_TOKEN`
+- `GOOGLE_PLACES_API_KEY` (optional enrichment for address/image quality)
 
-```bash
-export TICKETMASTER_API_KEY="your_ticketmaster_key"
+### Recommended local setup (no Git commit)
+
+1. Copy `.env.example` to `.env.local`.
+2. Fill in your keys.
+3. Run the app normally.
+
+`server/src/env.js` auto-loads `.env.local` at startup, and `.gitignore` already ignores `*.local`.
+
+### PowerShell temporary env setup
+
+```powershell
+$env:TICKETMASTER_API_KEY="your_ticketmaster_key"
+$env:EVENTBRITE_API_TOKEN="your_eventbrite_token"
+$env:GOOGLE_PLACES_API_KEY="your_google_places_key"
 ```
 
-Without the key, the app gracefully falls back to the local event feed.
+Without keys, the app gracefully falls back to local seeded events.
 
 ## Run locally
 
@@ -185,6 +201,17 @@ npm run dev
 
 Backend runs at:
 - [http://localhost:4000](http://localhost:4000)
+
+### Optional: run only the backend
+
+```bash
+npm run dev:server
+```
+
+### Radius and unit
+
+- Change radius in `Settings` (miles/km).
+- Home swipe feed and My Events calendar re-sync automatically when radius is saved.
 
 ## Notes
 
