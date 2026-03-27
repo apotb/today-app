@@ -1,20 +1,15 @@
-# Render Blueprint: deploy the Express API as a Web Service.
-# Dashboard: New → Blueprint → connect repo; set secret env vars there (API keys).
+# Render Blueprint: Express API only.
+# After deploy: Dashboard → your service → Environment → add TICKETMASTER_API_KEY,
+# EVENTBRITE_API_TOKEN, GOOGLE_PLACES_API_KEY (optional; app starts without them).
 # https://render.com/docs/blueprint-spec
 services:
   - type: web
     name: today-app-api
     runtime: node
     plan: free
-    buildCommand: npm ci
+    # Skip devDependencies (Vite/React/TS) so the build stays small—free tier often OOMs on full npm ci.
+    buildCommand: npm ci --omit=dev
     startCommand: npm start
-    healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: "22"
-      - key: TICKETMASTER_API_KEY
-        sync: false
-      - key: EVENTBRITE_API_TOKEN
-        sync: false
-      - key: GOOGLE_PLACES_API_KEY
-        sync: false
+        value: "20"

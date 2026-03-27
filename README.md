@@ -230,13 +230,27 @@ The Vercel project is only the static frontend. The API must run on a Node host 
 
 1. Push this repo to GitHub (if it is not already).
 2. In [Render](https://render.com): **New → Blueprint**, connect the repo, and apply `render.yaml`.
-3. In the Blueprint flow (or the service **Environment** tab), set:
-   - `TICKETMASTER_API_KEY`, `EVENTBRITE_API_TOKEN`, `GOOGLE_PLACES_API_KEY` (same values you use locally).
+3. After the service is created, open it → **Environment** → add (optional but needed for real event data):
+   - `TICKETMASTER_API_KEY`, `EVENTBRITE_API_TOKEN`, `GOOGLE_PLACES_API_KEY` (same as `.env.local` locally).
 4. Wait for deploy; open `https://<your-service>.onrender.com/api/health` and confirm JSON `{"ok":true}`.
 5. In **Vercel** → your project → **Environment variables** → add **`VITE_API_BASE`** = `https://<your-service>.onrender.com/api` (your real host).
 6. **Redeploy** the Vercel app so the build picks up `VITE_API_BASE`.
 
 SQLite on Render’s free tier is stored on an **ephemeral** disk (data can reset on restarts). For a durable DB, add a Render **disk** and set **`TODAY_DB_PATH`** to a file on that mount (e.g. `/mnt/data/today.db`).
+
+### Render deploy troubleshooting
+
+- **Build failed / “out of memory” / very long install**  
+  Ensure the service uses **`npm ci --omit=dev`** (see `render.yaml`). A full install pulls in Vite/React and can exhaust the free builder.
+
+- **“Application failed to respond” or health check**  
+  Free web services **sleep** after idle; first request can take ~30–60s. Open **`/api/health`** again after a short wait.
+
+- **Blueprint / YAML errors**  
+  `render.yaml` must be at the **repository root** of the GitHub repo you connect (same folder as `package.json`).
+
+- **Still stuck**  
+  In Render → your service → **Logs**; copy the **last 30–40 lines** of the failing **build** or **deploy** log—that usually states the exact error (e.g. `sqlite3` compile, wrong Node version).
 
 ### Server env
 
