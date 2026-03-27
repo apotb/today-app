@@ -32,6 +32,8 @@ export type QuestionItem = {
   id: string
   prompt: string
   categories: EventCategory[]
+  /** Semantic tags used for personalization scoring */
+  tags: string[]
 }
 
 export type EventItem = {

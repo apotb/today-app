@@ -36,8 +36,11 @@ export function MyEventsPage() {
   }, [])
 
   useEffect(() => {
-    void refreshEvents()
-  }, [])
+    const id = window.setTimeout(() => {
+      void refreshEvents()
+    }, 0)
+    return () => window.clearTimeout(id)
+  }, [refreshEvents])
 
   useEffect(() => onDiscoverySettingsChanged(() => void refreshEvents()), [refreshEvents])
 

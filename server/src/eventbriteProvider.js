@@ -50,6 +50,9 @@ const normalizeEventbrite = (event) => {
     event?.name?.text ??
     ''
 
+  const lat = venue?.latitude != null ? Number(venue.latitude) : null
+  const lng = venue?.longitude != null ? Number(venue.longitude) : null
+
   return {
     id: `eb_${event.id ?? randomUUID()}`,
     title: cleanTitle(event?.name?.text ?? 'Local Event'),
@@ -62,6 +65,11 @@ const normalizeEventbrite = (event) => {
     location: venueName && venueAddress ? `${venueName} · ${venueAddress}` : venueName ?? 'Local Venue',
     address: venueAddress ?? venueName ?? 'Local Venue',
     sourceUrl: event?.url ?? null,
+    latitude: Number.isFinite(lat) ? lat : null,
+    longitude: Number.isFinite(lng) ? lng : null,
+    provider: 'eventbrite',
+    organizerKey: event?.organizer_id ? String(event.organizer_id) : venue?.id ? String(venue.id) : null,
+    tags: [],
   }
 }
 

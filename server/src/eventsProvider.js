@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { fetchEventbriteEvents } from './eventbriteProvider.js'
-import { enrichWithPlaces } from './googlePlaces.js'
+import { fetchGooglePlacesEvents } from './googlePlacesEvents.js'
+import { aggregateAndDedupeEvents } from './eventAggregation.js'
 
 const mapCategory = (raw = '') => {
   const value = raw.toLowerCase()
@@ -41,6 +42,11 @@ const normalizeTicketmasterEvent = (event) => {
   const venueAddress = [venue?.address?.line1, venue?.city?.name, venue?.state?.stateCode]
     .filter(Boolean)
     .join(', ')
+  const promoter = event?.promoter?._embedded?.promoters?.[0] ?? event?.promoter
+  const organizerKey = promoter?.id ?? promoter?.name ?? null
+  const lat = venue?.location?.latitude != null ? Number(venue.location.latitude) : null
+  const lng = venue?.location?.longitude != null ? Number(venue.location.longitude) : null
+
   return {
     id: `tm_${event.id ?? randomUUID()}`,
     title: cleanTitle(event.name ?? 'Local Event'),
@@ -53,6 +59,11 @@ const normalizeTicketmasterEvent = (event) => {
     location: venue?.name ?? 'Local Venue',
     address: venueAddress || venue?.name || 'Local Venue',
     sourceUrl: event?.url ?? null,
+    latitude: Number.isFinite(lat) ? lat : null,
+    longitude: Number.isFinite(lng) ? lng : null,
+    provider: 'ticketmaster',
+    organizerKey: organizerKey ? String(organizerKey) : null,
+    tags: [],
   }
 }
 
@@ -72,27 +83,6 @@ const uniqEvents = (events) => {
     out.push(event)
   }
   return out
-}
-
-const filterByPreferences = (events, preferredCategories) => {
-  if (!preferredCategories || preferredCategories.length === 0) return events
-  const set = new Set(preferredCategories)
-  const filtered = events.filter((e) => set.has(e.category))
-  return filtered.length > 0 ? filtered : events
-}
-
-const ensureUniqueImages = (events) => {
-  const seen = new Set()
-  return events.map((event) => {
-    const currentImage = event?.imageUrl ? String(event.imageUrl) : ''
-    if (currentImage && !seen.has(currentImage)) {
-      seen.add(currentImage)
-      return event
-    }
-    const fallback = `https://picsum.photos/seed/today-${encodeURIComponent(event.id)}/1200/675`
-    seen.add(fallback)
-    return { ...event, imageUrl: fallback }
-  })
 }
 
 const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles') => {
@@ -135,25 +125,19 @@ const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles
   }
 }
 
-export const fetchExternalEvents = async ({
-  location = {},
-  radius = 25,
-  unit = 'miles',
-  preferredCategories = [],
-} = {}) => {
-  const [ticketmaster, eventbrite] = await Promise.all([
+export const fetchExternalEvents = async (options = {}) => {
+  const { location = {}, radius = 25, unit = 'miles' } = options
+
+  const [ticketmaster, eventbrite, googlePlaces] = await Promise.all([
     fetchTicketmasterEvents(location, radius, unit),
     fetchEventbriteEvents({ location, radius, unit }),
+    fetchGooglePlacesEvents({ location, radius, unit }),
   ])
 
-  let merged = uniqEvents([...ticketmaster, ...eventbrite])
-  merged = filterByPreferences(merged, preferredCategories)
-  merged = ensureUniqueImages(merged)
-
+  const merged = uniqEvents([...ticketmaster, ...eventbrite, ...googlePlaces])
   if (merged.length === 0) {
     return []
   }
 
-  const enriched = await enrichWithPlaces(merged, { location, radius, unit })
-  return ensureUniqueImages(enriched.length > 0 ? enriched : merged)
+  return aggregateAndDedupeEvents(merged)
 }

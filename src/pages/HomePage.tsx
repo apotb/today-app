@@ -27,7 +27,7 @@ export function HomePage() {
         settings.radius,
         settings.unit,
       )
-      const { events: list } = await api.discoverEvents(getSessionId())
+      const { events: list } = await api.discoverEvents(getSessionId(), getStoredLocation())
       setEvents(list)
       setTotalCount(list.length)
     } catch (e) {

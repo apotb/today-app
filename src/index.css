@@ -352,6 +352,40 @@ main {
   text-align: center;
 }
 
+.location-step .location-subtitle {
+  max-width: 28rem;
+  margin: 0 auto 1.25rem;
+}
+
+.location-step .location-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 22rem;
+  margin: 0 auto;
+}
+
+.location-step .location-divider {
+  font-size: 0.85rem;
+  color: #506080;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.location-step .zip-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+}
+
+.location-step .zip-inline .input {
+  flex: 1 1 140px;
+  min-width: 140px;
+}
+
 .stepper {
   color: #007400;
   font-weight: 700;

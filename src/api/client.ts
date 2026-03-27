@@ -1,3 +1,4 @@
+import type { AnswerSoFar } from '../lib/questionPool'
 import type { EventCategory, EventItem } from '../types/models'
 import type { StoredLocation } from '../lib/location'
 import type { DistanceUnit } from '../lib/discoverySettings'
@@ -26,10 +27,7 @@ export const api = {
       body: JSON.stringify({ sessionId, categories }),
     }),
 
-  saveOnboardingResponses: (
-    sessionId: string,
-    answers: Array<{ questionId: string; answer: boolean; categories: EventCategory[] }>,
-  ) =>
+  saveOnboardingResponses: (sessionId: string, answers: AnswerSoFar[]) =>
     request<{ success: boolean }>('/onboarding/responses', {
       method: 'POST',
       body: JSON.stringify({ sessionId, answers }),
@@ -52,10 +50,12 @@ export const api = {
       body: JSON.stringify({ sessionId, location: location ?? {}, radius, unit }),
     }),
 
-  discoverEvents: (sessionId: string) =>
-    request<{ events: EventItem[] }>(
-      `/events/discover?sessionId=${encodeURIComponent(sessionId)}`,
-    ),
+  discoverEvents: (sessionId: string, location: StoredLocation | null) => {
+    const params = new URLSearchParams({ sessionId })
+    if (location?.latitude != null) params.set('latitude', String(location.latitude))
+    if (location?.longitude != null) params.set('longitude', String(location.longitude))
+    return request<{ events: EventItem[] }>(`/events/discover?${params.toString()}`)
+  },
 
   submitInteraction: (
     sessionId: string,

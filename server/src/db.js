@@ -138,6 +138,22 @@ export const initDb = async () => {
   `)
 
   await ensureColumn('events', 'address', 'TEXT')
+  await ensureColumn('events', 'latitude', 'REAL')
+  await ensureColumn('events', 'longitude', 'REAL')
+  await ensureColumn('events', 'tags', 'TEXT')
+  await ensureColumn('events', 'source_url', 'TEXT')
+  await ensureColumn('events', 'series_key', 'TEXT')
+
+  await ensureColumn('user_questionnaire_answers', 'tags_json', 'TEXT')
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS user_tag_scores (
+      session_id TEXT NOT NULL,
+      tag TEXT NOT NULL,
+      score REAL NOT NULL DEFAULT 0,
+      PRIMARY KEY (session_id, tag)
+    )
+  `)
 
   await run(
     `DELETE FROM user_interactions
