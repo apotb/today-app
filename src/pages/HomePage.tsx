@@ -64,12 +64,24 @@ export function HomePage() {
 
   const current = events[0]
 
+  const seriesDedupeKey = (e: EventItem) => {
+    const sk = e.series_key?.trim()
+    if (sk) return `s:${sk}`
+    return `f:${e.title.trim().toLowerCase()}|${e.location.trim().toLowerCase()}`
+  }
+
   const swipe = async (direction: 'left' | 'right') => {
     if (!current) return
     const action = direction === 'right' ? 'like' : 'dislike'
     await api.submitInteraction(getSessionId(), current.id, action)
     if (direction === 'right') notifyFirstLike()
-    setEvents((prev) => prev.slice(1))
+
+    setEvents((prev) => {
+      const tail = prev.slice(1)
+      if (direction !== 'right') return tail
+      const likedKey = seriesDedupeKey(current)
+      return tail.filter((e) => seriesDedupeKey(e) !== likedKey)
+    })
   }
 
   const showTutorial = !loading && !error && !tutorialDismissed

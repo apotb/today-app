@@ -177,11 +177,13 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
             </button>
           </div>
         ) : null}
-        {showDesktopNav ? (
-          <div className="swipe-hint">Use ← / → keys or click arrows · Swipe up for details</div>
-        ) : (
-          <div className="swipe-hint swipe-hint-mobile">Swipe up for details</div>
-        )}
+        {!deckLayout ? (
+          showDesktopNav ? (
+            <div className="swipe-hint">Use ← / → keys or click arrows · Swipe up for details</div>
+          ) : (
+            <div className="swipe-hint swipe-hint-mobile">Swipe up for details</div>
+          )
+        ) : null}
       </div>
       <div className="card-body" style={{ opacity: imageReady ? 1 : 0 }}>
         <p className="chip">{event.category}</p>

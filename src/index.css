@@ -540,6 +540,10 @@ button.tutorial-dismiss {
   min-height: calc(100vh - 130px);
   display: grid;
   place-items: center;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
 }
 
 .home-swipe-page {
@@ -556,18 +560,23 @@ button.tutorial-dismiss {
 
 .home-swipe-page h1 {
   flex-shrink: 0;
+  width: 100%;
   margin-top: 0;
   margin-bottom: 6px;
   font-size: clamp(1.15rem, 4vw, 1.45rem);
   line-height: 1.2;
+  text-align: center;
 }
 
 .home-loading-copy {
   margin: 0 0 10px;
+  text-align: center;
+  width: 100%;
 }
 
 .home-swipe-hint {
   flex-shrink: 0;
+  width: 100%;
   margin: 0 0 8px;
   font-size: 0.82rem;
   font-weight: 600;
