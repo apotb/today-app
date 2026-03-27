@@ -6,7 +6,7 @@ import { all, get, initDb, run } from './db.js'
 import { fetchExternalEvents } from './eventsProvider.js'
 
 const app = express()
-const port = 4000
+const port = Number(process.env.PORT) || 4000
 
 app.use(cors())
 app.use(express.json())
@@ -515,8 +515,8 @@ app.use((error, _req, res, _next) => {
 
 initDb()
   .then(() => {
-    app.listen(port, () => {
-      console.log(`Today API running at http://localhost:${port}`)
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`Today API listening on ${port}`)
     })
   })
   .catch((error) => {

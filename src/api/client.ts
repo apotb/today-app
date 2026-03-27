@@ -3,18 +3,43 @@ import type { EventCategory, EventItem } from '../types/models'
 import type { StoredLocation } from '../lib/location'
 import type { DistanceUnit } from '../lib/discoverySettings'
 
-const API_BASE = '/api'
+/** Relative `/api` uses the Vite dev proxy. On Vercel, set `VITE_API_BASE` to your API origin + `/api` (e.g. `https://your-api.railway.app/api`). */
+const API_BASE = (import.meta.env.VITE_API_BASE ?? '/api').replace(/\/$/, '')
+
+function apiErrorHint(status: number, body: string) {
+  if (import.meta.env.PROD && API_BASE === '/api') {
+    return 'Server API is not deployed for this site. Set VITE_API_BASE on Vercel to your backend URL (see .env.example).'
+  }
+  if (status === 404 && body.trimStart().startsWith('<')) {
+    return 'API returned a web page instead of JSON—check VITE_API_BASE and that the backend is running.'
+  }
+  return `Request failed (${status}).`
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
     ...options,
   })
+  const text = await response.text()
   if (!response.ok) {
-    const body = await response.json().catch(() => ({ message: 'Request failed' }))
-    throw new Error(body.message ?? 'Request failed')
+    if (text.trimStart().startsWith('{')) {
+      try {
+        const body = JSON.parse(text) as { message?: string }
+        throw new Error(body.message ?? apiErrorHint(response.status, text))
+      } catch (e) {
+        if (e instanceof Error && !(e instanceof SyntaxError)) throw e
+      }
+    }
+    throw new Error(apiErrorHint(response.status, text))
   }
-  return response.json() as Promise<T>
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error(
+      'Invalid JSON from API. On Vercel, set VITE_API_BASE to your Express server (URL must end with `/api`, same paths as locally).',
+    )
+  }
 }
 
 export const api = {

@@ -1,6 +1,10 @@
+import path from 'node:path'
 import sqlite3 from 'sqlite3'
 
-const db = new sqlite3.Database('./server/today.db')
+const dbPath =
+  process.env.TODAY_DB_PATH?.trim() || path.join(process.cwd(), 'server', 'today.db')
+
+const db = new sqlite3.Database(dbPath)
 
 const run = (sql, params = []) =>
   new Promise((resolve, reject) => {

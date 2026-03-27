@@ -222,6 +222,29 @@ Open:
 
 You should see `true` for providers you configured in `.env.local`.
 
+## Deploy (Vercel site + API host)
+
+The Vercel project is only the static frontend. The API must run on a Node host (Render, Railway, Fly, etc.).
+
+### Render (quickest from this repo)
+
+1. Push this repo to GitHub (if it is not already).
+2. In [Render](https://render.com): **New → Blueprint**, connect the repo, and apply `render.yaml`.
+3. In the Blueprint flow (or the service **Environment** tab), set:
+   - `TICKETMASTER_API_KEY`, `EVENTBRITE_API_TOKEN`, `GOOGLE_PLACES_API_KEY` (same values you use locally).
+4. Wait for deploy; open `https://<your-service>.onrender.com/api/health` and confirm JSON `{"ok":true}`.
+5. In **Vercel** → your project → **Environment variables** → add **`VITE_API_BASE`** = `https://<your-service>.onrender.com/api` (your real host).
+6. **Redeploy** the Vercel app so the build picks up `VITE_API_BASE`.
+
+SQLite on Render’s free tier is stored on an **ephemeral** disk (data can reset on restarts). For a durable DB, add a Render **disk** and set **`TODAY_DB_PATH`** to a file on that mount (e.g. `/mnt/data/today.db`).
+
+### Server env
+
+| Variable | Purpose |
+|----------|---------|
+| `PORT` | Set automatically on most hosts (defaults to `4000` locally). |
+| `TODAY_DB_PATH` | Optional absolute path to the SQLite file (default: `server/today.db` under the project root). |
+
 ## Notes
 
 - No full authentication is required; a local session ID is used.
