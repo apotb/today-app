@@ -7,8 +7,9 @@ services:
     name: today-app-api
     runtime: node
     plan: free
-    # Skip devDependencies (Vite/React/TS) so the build stays small—free tier often OOMs on full npm ci.
-    buildCommand: npm ci --omit=dev
+    # Skip devDependencies. Rebuild sqlite3 on Render's Linux so the native addon matches their
+    # glibc (prebuilt binaries may require GLIBC_2.38 and crash at runtime).
+    buildCommand: npm ci --omit=dev && npm rebuild sqlite3 --build-from-source
     startCommand: npm start
     envVars:
       - key: NODE_VERSION

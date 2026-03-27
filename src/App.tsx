@@ -14,12 +14,14 @@ function App() {
 
   useEffect(() => {
     const run = async () => {
-      const sessionId = getSessionId()
       try {
-        const response = await api.getPreferences(sessionId)
-        setNeedsOnboarding(response.preferences.length === 0)
-      } catch {
-        setNeedsOnboarding(true)
+        const sessionId = getSessionId()
+        try {
+          const response = await api.getPreferences(sessionId)
+          setNeedsOnboarding(response.preferences.length === 0)
+        } catch {
+          setNeedsOnboarding(true)
+        }
       } finally {
         setReady(true)
       }
@@ -27,7 +29,18 @@ function App() {
     void run()
   }, [])
 
-  if (!ready) return <p className="status">Loading Today...</p>
+  if (!ready) {
+    return (
+      <p className="status">
+        Loading Today...
+        <br />
+        <span className="loading-hint">
+          If this takes more than a minute, your API may be waking up (free Render) or blocked by a privacy extension—try
+          opening your API <code>/api/health</code> in a new tab first.
+        </span>
+      </p>
+    )
+  }
 
   return (
     <Routes>

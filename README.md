@@ -249,6 +249,10 @@ SQLite on Render’s free tier is stored on an **ephemeral** disk (data can rese
 - **Blueprint / YAML errors**  
   `render.yaml` must be at the **repository root** of the GitHub repo you connect (same folder as `package.json`).
 
+- **`GLIBC_2.38' not found` or sqlite3 .node errors at start**  
+  Prebuilt `sqlite3` binaries can target a newer Linux than Render uses. The blueprint runs **`npm rebuild sqlite3 --build-from-source`** after install so it compiles on Render. If you created the service manually, set **Build Command** to:  
+  `npm ci --omit=dev && npm rebuild sqlite3 --build-from-source`
+
 - **Still stuck**  
   In Render → your service → **Logs**; copy the **last 30–40 lines** of the failing **build** or **deploy** log—that usually states the exact error (e.g. `sqlite3` compile, wrong Node version).
 

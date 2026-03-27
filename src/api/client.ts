@@ -16,10 +16,14 @@ function apiErrorHint(status: number, body: string) {
   return `Request failed (${status}).`
 }
 
+/** Free-tier hosts (e.g. Render) can take 30–90s to answer the first request after sleep. */
+const REQUEST_TIMEOUT_MS = 120_000
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
     ...options,
+    signal: options?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
   const text = await response.text()
   if (!response.ok) {
