@@ -268,10 +268,25 @@ app.post('/api/events/sync', async (req, res, next) => {
     await run(`DELETE FROM events WHERE id LIKE 'evt_%' OR id LIKE 'tm_%' OR id LIKE 'eb_%' OR id LIKE 'gp_%'`)
     for (const event of fetchedEvents) {
       await run(
-        `INSERT OR REPLACE INTO events (
+        `INSERT INTO events (
           id, title, description, starts_at, ends_at, cost, image_url, category, location, address,
           latitude, longitude, tags, source_url, series_key
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          description = excluded.description,
+          starts_at = excluded.starts_at,
+          ends_at = excluded.ends_at,
+          cost = excluded.cost,
+          image_url = excluded.image_url,
+          category = excluded.category,
+          location = excluded.location,
+          address = excluded.address,
+          latitude = excluded.latitude,
+          longitude = excluded.longitude,
+          tags = excluded.tags,
+          source_url = excluded.source_url,
+          series_key = excluded.series_key`,
         [
           event.id,
           event.title,

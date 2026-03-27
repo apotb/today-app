@@ -10,6 +10,9 @@ fs.mkdirSync(path.dirname(dbPath), { recursive: true })
 /** Built-in SQLite (Node ≥22.13)—no native `sqlite3` addon, avoids GLIBC/prebuild issues on hosts like Render. */
 const db = new DatabaseSync(dbPath)
 
+/** Match `sqlite3` default: FK checks off unless enabled. `node:sqlite` enables them by default, which breaks `INSERT OR REPLACE` and bulk deletes that the sync path relies on. */
+db.exec('PRAGMA foreign_keys = OFF')
+
 const run = (sql, params = []) => {
   try {
     const stmt = db.prepare(sql)
