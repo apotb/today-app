@@ -1,0 +1,62 @@
+import { randomUUID } from 'node:crypto'
+
+const now = Date.now()
+const inHours = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString()
+
+export const localEventFeed = [
+  {
+    id: randomUUID(),
+    title: 'After-Work Tech + AI Meetup',
+    description: 'Lightning talks and open networking for builders.',
+    startsAt: inHours(3),
+    endsAt: inHours(5),
+    cost: 0,
+    imageUrl: 'https://images.unsplash.com/photo-1558403194-611308249627?w=900&q=80',
+    category: 'tech-ai',
+    location: 'Downtown Hub',
+  },
+  {
+    id: randomUUID(),
+    title: 'Rooftop Salsa Night',
+    description: 'Live DJ, beginner-friendly dancing, city views.',
+    startsAt: inHours(7),
+    endsAt: inHours(10),
+    cost: 18,
+    imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900&q=80',
+    category: 'music-nightlife',
+    location: 'Skyline Terrace',
+  },
+  {
+    id: randomUUID(),
+    title: 'Farmers Market Morning',
+    description: 'Fresh produce, local vendors, and artisan goods.',
+    startsAt: inHours(11),
+    endsAt: inHours(15),
+    cost: 0,
+    imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=900&q=80',
+    category: 'markets',
+    location: 'Riverfront Plaza',
+  },
+  {
+    id: randomUUID(),
+    title: 'Comedy Open Mic',
+    description: 'A mix of rising local comedians and improv acts.',
+    startsAt: inHours(14),
+    endsAt: inHours(16),
+    cost: 12,
+    imageUrl: 'https://images.unsplash.com/photo-1527224538127-2104bb71c51b?w=900&q=80',
+    category: 'comedy-improv',
+    location: 'Laugh Lab',
+  },
+  {
+    id: randomUUID(),
+    title: 'Community Volunteer Kitchen',
+    description: 'Cook and package meals for local shelters.',
+    startsAt: inHours(18),
+    endsAt: inHours(21),
+    cost: 0,
+    imageUrl: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=900&q=80',
+    category: 'volunteering-community',
+    location: 'Hope Center',
+  },
+]

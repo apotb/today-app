@@ -2,15 +2,15 @@ import type { EventItem } from '../types/models'
 
 type Props = {
   event: EventItem
+  swiping?: 'left' | 'right' | null
   onSwipe: (direction: 'left' | 'right') => void
-  onAttended: () => void
 }
 
 const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'Free')
 
-export function SwipeCard({ event, onSwipe, onAttended }: Props) {
+export function SwipeCard({ event, swiping, onSwipe }: Props) {
   return (
-    <article className="swipe-card">
+    <article className={`swipe-card ${swiping ? `swipe-${swiping}` : ''}`}>
       <img src={event.image_url} alt={event.title} className="card-image" />
       <div className="card-body">
         <p className="chip">{event.category}</p>
@@ -26,9 +26,6 @@ export function SwipeCard({ event, onSwipe, onAttended }: Props) {
         </button>
         <button className="btn btn-primary" onClick={() => onSwipe('right')}>
           Swipe Right
-        </button>
-        <button className="btn btn-ghost" onClick={onAttended}>
-          Mark Attended
         </button>
       </div>
     </article>

@@ -24,6 +24,21 @@ export const api = {
       body: JSON.stringify({ sessionId, categories }),
     }),
 
+  saveOnboardingResponses: (
+    sessionId: string,
+    answers: Array<{ questionId: string; answer: boolean; categories: EventCategory[] }>,
+  ) =>
+    request<{ success: boolean }>('/onboarding/responses', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, answers }),
+    }),
+
+  importLocalEvents: (location: string) =>
+    request<{ success: boolean; imported: number }>('/events/import-local', {
+      method: 'POST',
+      body: JSON.stringify({ location }),
+    }),
+
   discoverEvents: (sessionId: string) =>
     request<{ events: EventItem[] }>(
       `/events/discover?sessionId=${encodeURIComponent(sessionId)}`,
@@ -32,11 +47,17 @@ export const api = {
   submitInteraction: (
     sessionId: string,
     eventId: string,
-    action: 'like' | 'dislike' | 'attended',
+    action: 'like' | 'dislike',
   ) =>
     request<{ success: boolean }>('/interactions', {
       method: 'POST',
       body: JSON.stringify({ sessionId, eventId, action }),
+    }),
+
+  setAttendance: (sessionId: string, eventId: string, status: 'attended' | 'missed') =>
+    request<{ success: boolean }>('/attendance', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, eventId, status }),
     }),
 
   getMyEvents: (sessionId: string) =>
