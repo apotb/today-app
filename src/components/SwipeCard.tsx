@@ -95,6 +95,7 @@ export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
       </motion.div>
       <div className="card-image-wrap">
         <img src={event.image_url} alt={event.title} className="card-image" />
+        <div className="image-gradient" />
         {showDesktopNav ? (
           <div className="image-nav" aria-hidden="false">
             <button
@@ -118,6 +119,9 @@ export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
               ›
             </button>
           </div>
+        ) : null}
+        {showDesktopNav ? (
+          <div className="swipe-hint">Use ← / → keys or click arrows</div>
         ) : null}
       </div>
       <div className="card-body">

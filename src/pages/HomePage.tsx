@@ -42,6 +42,7 @@ export function HomePage() {
   useEffect(() => onDiscoverySettingsChanged(() => void loadEvents()), [loadEvents])
 
   const current = events[0]
+  const totalVisible = events.length
 
   const swipe = async (direction: 'left' | 'right') => {
     if (!current) return
@@ -56,6 +57,16 @@ export function HomePage() {
   return (
     <div className="page center-page">
       <h1>What&apos;s happening today?</h1>
+      {current ? (
+        <div className="feed-meta">
+          <p className="status">
+            {totalVisible} event{totalVisible === 1 ? '' : 's'} left in your next-24-hour feed
+          </p>
+          <button className="btn btn-ghost" onClick={() => void loadEvents()}>
+            Refresh feed
+          </button>
+        </div>
+      ) : null}
       {current ? (
         <SwipeCard event={current} onSwipe={swipe} showDesktopNav={isDesktop} />
       ) : (
