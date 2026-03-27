@@ -159,31 +159,6 @@ export const initDb = async () => {
     )
   `)
 
-  await run(
-    `DELETE FROM user_interactions
-     WHERE event_id IN (
-       SELECT id FROM events
-       WHERE id LIKE 'local-%'
-          OR id LIKE 'seed-%'
-          OR title LIKE '%AI Mereting%'
-     )`,
-  )
-  await run(
-    `DELETE FROM user_event_attendance
-     WHERE event_id IN (
-       SELECT id FROM events
-       WHERE id LIKE 'local-%'
-          OR id LIKE 'seed-%'
-          OR title LIKE '%AI Mereting%'
-     )`,
-  )
-  await run(
-    `DELETE FROM events
-     WHERE id LIKE 'local-%'
-        OR id LIKE 'seed-%'
-        OR title LIKE '%AI Mereting%'`,
-  )
-
   await run(`
     CREATE TABLE IF NOT EXISTS user_preferences (
       session_id TEXT NOT NULL,
@@ -229,6 +204,31 @@ export const initDb = async () => {
       FOREIGN KEY(event_id) REFERENCES events(id)
     )
   `)
+
+  await run(
+    `DELETE FROM user_interactions
+     WHERE event_id IN (
+       SELECT id FROM events
+       WHERE id LIKE 'local-%'
+          OR id LIKE 'seed-%'
+          OR title LIKE '%AI Mereting%'
+     )`,
+  )
+  await run(
+    `DELETE FROM user_event_attendance
+     WHERE event_id IN (
+       SELECT id FROM events
+       WHERE id LIKE 'local-%'
+          OR id LIKE 'seed-%'
+          OR title LIKE '%AI Mereting%'
+     )`,
+  )
+  await run(
+    `DELETE FROM events
+     WHERE id LIKE 'local-%'
+        OR id LIKE 'seed-%'
+        OR title LIKE '%AI Mereting%'`,
+  )
 
   const row = await get('SELECT COUNT(*) as count FROM events')
   if (row?.count === 0) {
