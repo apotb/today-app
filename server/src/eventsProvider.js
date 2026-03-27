@@ -17,6 +17,18 @@ const mapCategory = (raw = '') => {
   return 'social-meetups'
 }
 
+const cleanTitle = (value = '') =>
+  String(value)
+    .replace(/\s+/g, ' ')
+    .replace(/[|•]+/g, ' - ')
+    .trim()
+
+const cleanDescription = (value = '') => {
+  const trimmed = String(value).replace(/\s+/g, ' ').trim()
+  if (!trimmed) return 'Event details will be available soon.'
+  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`
+}
+
 const normalizeTicketmasterEvent = (event) => {
   const start = event?.dates?.start?.dateTime
   if (!start) return null
@@ -29,8 +41,8 @@ const normalizeTicketmasterEvent = (event) => {
     .join(', ')
   return {
     id: `tm_${event.id ?? randomUUID()}`,
-    title: event.name ?? 'Untitled Event',
-    description: event.info ?? event.pleaseNote ?? 'No description available.',
+    title: cleanTitle(event.name ?? 'Local Event'),
+    description: cleanDescription(event.info ?? event.pleaseNote ?? ''),
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
     cost: event?.priceRanges?.[0]?.min ?? 0,
@@ -44,26 +56,17 @@ const normalizeTicketmasterEvent = (event) => {
 
 const normalizeText = (value = '') => value.toLowerCase().replace(/\s+/g, ' ').trim()
 
-const eventFingerprint = (event) => {
-  const sourceUrl = event?.sourceUrl ? String(event.sourceUrl) : ''
-  if (sourceUrl) return `url:${sourceUrl}`
-  const title = normalizeText(event?.title ?? '')
-  const start = event?.startsAt ? new Date(event.startsAt).toISOString() : ''
-  const location = normalizeText(event?.location ?? '')
-  return `meta:${title}|${start}|${location}`
-}
-
 const uniqEvents = (events) => {
   const seenIds = new Set()
-  const seenFingerprints = new Set()
+  const seenUrls = new Set()
   const out = []
   for (const event of events) {
     if (!event?.id) continue
-    const fingerprint = eventFingerprint(event)
+    const eventUrl = normalizeText(event?.sourceUrl ?? '')
     if (seenIds.has(event.id)) continue
-    if (seenFingerprints.has(fingerprint)) continue
+    if (eventUrl && seenUrls.has(eventUrl)) continue
     seenIds.add(event.id)
-    seenFingerprints.add(fingerprint)
+    if (eventUrl) seenUrls.add(eventUrl)
     out.push(event)
   }
   return out

@@ -1,13 +1,11 @@
-import { randomUUID } from 'node:crypto'
-
 const now = Date.now()
 const inHours = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString()
 
 export const localEventFeed = [
   {
-    id: randomUUID(),
-    title: 'After-Work Tech + AI Meetup',
-    description: 'Lightning talks and open networking for builders.',
+    id: 'local-tech-ai-meetup',
+    title: 'After-Work Tech and AI Meetup',
+    description: 'Join local builders for lightning talks and practical networking.',
     startsAt: inHours(3),
     endsAt: inHours(5),
     cost: 0,
@@ -17,9 +15,9 @@ export const localEventFeed = [
     address: '480 Center St, Downtown',
   },
   {
-    id: randomUUID(),
+    id: 'local-rooftop-salsa',
     title: 'Rooftop Salsa Night',
-    description: 'Live DJ, beginner-friendly dancing, city views.',
+    description: 'Enjoy a live DJ set, beginner-friendly dancing, and skyline views.',
     startsAt: inHours(7),
     endsAt: inHours(10),
     cost: 18,
@@ -29,9 +27,9 @@ export const localEventFeed = [
     address: '90 Skyline Ave, Midtown',
   },
   {
-    id: randomUUID(),
-    title: 'Farmers Market Morning',
-    description: 'Fresh produce, local vendors, and artisan goods.',
+    id: 'local-farmers-market',
+    title: 'Morning Farmers Market',
+    description: 'Browse fresh produce, local vendors, and artisan goods.',
     startsAt: inHours(11),
     endsAt: inHours(15),
     cost: 0,
@@ -41,9 +39,9 @@ export const localEventFeed = [
     address: '12 Riverfront Plaza, Old Town',
   },
   {
-    id: randomUUID(),
+    id: 'local-comedy-open-mic',
     title: 'Comedy Open Mic',
-    description: 'A mix of rising local comedians and improv acts.',
+    description: 'Watch rising local comedians and improv performers.',
     startsAt: inHours(14),
     endsAt: inHours(16),
     cost: 12,
@@ -53,9 +51,9 @@ export const localEventFeed = [
     address: '7 Stage Ln, Theater District',
   },
   {
-    id: randomUUID(),
-    title: 'Community Volunteer Kitchen',
-    description: 'Cook and package meals for local shelters.',
+    id: 'local-volunteer-kitchen',
+    title: 'Community Volunteer Kitchen Shift',
+    description: 'Help prepare and package meals for neighborhood shelters.',
     startsAt: inHours(18),
     endsAt: inHours(21),
     cost: 0,

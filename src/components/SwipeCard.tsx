@@ -82,7 +82,7 @@ export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
       dragElastic={0.9}
       onDragEnd={handleDragEnd}
       whileTap={{ cursor: 'grabbing' }}
-      initial={{ opacity: 0.5, scale: 0.97 }}
+      initial={{ opacity: 1, scale: 1 }}
       animate={controls}
       exit={{ opacity: 0, x: 200 }}
       transition={{ type: 'spring', stiffness: 250, damping: 22 }}
@@ -130,7 +130,7 @@ export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
         <p>{formatDateTime12h(event.starts_at)}</p>
         <p>{event.location}</p>
         <p>{formatPrice(event.cost)}</p>
-        <p className="description">{event.description}</p>
+        <p className="description description-preview">{event.description}</p>
       </div>
     </motion.article>
   )

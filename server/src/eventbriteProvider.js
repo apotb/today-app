@@ -17,6 +17,18 @@ const mapCategory = (raw = '') => {
   return 'social-meetups'
 }
 
+const cleanTitle = (value = '') =>
+  String(value)
+    .replace(/\s+/g, ' ')
+    .replace(/[|•]+/g, ' - ')
+    .trim()
+
+const cleanDescription = (value = '') => {
+  const trimmed = String(value).replace(/\s+/g, ' ').trim()
+  if (!trimmed) return 'Event details will be available soon.'
+  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`
+}
+
 const normalizeEventbrite = (event) => {
   const start = event?.start?.utc
   const end = event?.end?.utc
@@ -37,8 +49,8 @@ const normalizeEventbrite = (event) => {
 
   return {
     id: `eb_${event.id ?? randomUUID()}`,
-    title: event?.name?.text ?? 'Untitled Event',
-    description: event?.description?.text ?? 'No description available.',
+    title: cleanTitle(event?.name?.text ?? 'Local Event'),
+    description: cleanDescription(event?.description?.text ?? ''),
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(end).toISOString(),
     cost: event?.is_free ? 0 : 0,

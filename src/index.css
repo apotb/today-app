@@ -219,6 +219,13 @@ main {
   color: #506080;
 }
 
+.description-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .btn {
   border: 0;
   border-radius: 10px;

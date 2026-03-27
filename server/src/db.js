@@ -1,5 +1,4 @@
 import sqlite3 from 'sqlite3'
-import { randomUUID } from 'node:crypto'
 
 const db = new sqlite3.Database('./server/today.db')
 
@@ -41,9 +40,9 @@ const inHours = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString()
 
 const seedEvents = [
   {
-    id: randomUUID(),
+    id: 'seed-sunrise-harbor-run',
     title: 'Sunrise Harbor Run',
-    description: 'Community-paced 5K run by the waterfront.',
+    description: 'Join a community-paced 5K run along the waterfront.',
     startsAt: inHours(2),
     endsAt: inHours(4),
     cost: 0,
@@ -53,9 +52,9 @@ const seedEvents = [
     address: '110 Harbor Park Dr, Waterfront District',
   },
   {
-    id: randomUUID(),
+    id: 'seed-downtown-jazz-night',
     title: 'Downtown Jazz Night',
-    description: 'Live local jazz artists and open seating.',
+    description: 'Enjoy live local jazz artists with open seating.',
     startsAt: inHours(6),
     endsAt: inHours(9),
     cost: 15,
@@ -65,9 +64,9 @@ const seedEvents = [
     address: '22 Main St, Downtown',
   },
   {
-    id: randomUUID(),
-    title: 'Neighborhood Clean-Up',
-    description: 'Volunteer team meetup to clean city trails.',
+    id: 'seed-neighborhood-cleanup',
+    title: 'Neighborhood Trail Cleanup',
+    description: 'Join a volunteer team to help clean nearby city trails.',
     startsAt: inHours(8),
     endsAt: inHours(10),
     cost: 0,
@@ -77,9 +76,9 @@ const seedEvents = [
     address: '501 Riverside Trailhead, Greenway',
   },
   {
-    id: randomUUID(),
+    id: 'seed-city-museum-tour',
     title: 'City Museum Night Tour',
-    description: 'After-hours guided tour through rotating exhibits.',
+    description: 'Take an after-hours guided tour through rotating exhibits.',
     startsAt: inHours(12),
     endsAt: inHours(14),
     cost: 22,
@@ -89,9 +88,9 @@ const seedEvents = [
     address: '15 Museum Ave, Arts Quarter',
   },
   {
-    id: randomUUID(),
+    id: 'seed-street-food-social',
     title: 'Street Food Social',
-    description: 'Pop-up food stalls and local performers.',
+    description: 'Explore pop-up food stalls and local live performers.',
     startsAt: inHours(20),
     endsAt: inHours(23),
     cost: 8,
@@ -101,9 +100,9 @@ const seedEvents = [
     address: '300 Market Square, Central District',
   },
   {
-    id: randomUUID(),
-    title: 'Startup Pitch Practice',
-    description: 'Skill drills and mini-games for all levels.',
+    id: 'seed-startup-pitch-practice',
+    title: 'Startup Pitch Practice Session',
+    description: 'Practice short pitches and get peer feedback in a friendly setting.',
     startsAt: inHours(16),
     endsAt: inHours(19),
     cost: 0,
