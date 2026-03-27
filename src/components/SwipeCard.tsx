@@ -5,13 +5,14 @@ import { formatDateTime12h } from '../lib/format'
 type Props = {
   event: EventItem
   onSwipe: (direction: 'left' | 'right') => void
+  showDesktopNav?: boolean
 }
 
 const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'Free')
 
 const SWIPE_THRESHOLD = 120
 
-export function SwipeCard({ event, onSwipe }: Props) {
+export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-220, 0, 220], [-10, 0, 10])
   const likeOpacity = useTransform(x, [20, SWIPE_THRESHOLD], [0, 1])
@@ -47,7 +48,31 @@ export function SwipeCard({ event, onSwipe }: Props) {
       <motion.div className="swipe-badge nope" style={{ opacity: nopeOpacity }}>
         NOPE
       </motion.div>
-      <img src={event.image_url} alt={event.title} className="card-image" />
+      <div className="card-image-wrap">
+        <img src={event.image_url} alt={event.title} className="card-image" />
+        {showDesktopNav ? (
+          <div className="image-nav" aria-hidden="false">
+            <button
+              type="button"
+              className="image-nav-btn left"
+              onClick={() => onSwipe('left')}
+              aria-label="Dislike (left arrow)"
+              title="Dislike (←)"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className="image-nav-btn right"
+              onClick={() => onSwipe('right')}
+              aria-label="Like (right arrow)"
+              title="Like (→)"
+            >
+              ›
+            </button>
+          </div>
+        ) : null}
+      </div>
       <div className="card-body">
         <p className="chip">{event.category}</p>
         <h2>{event.title}</h2>

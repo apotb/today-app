@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { localEventFeed } from './localEvents.js'
+import { fetchEventbriteEvents } from './eventbriteProvider.js'
+import { enrichWithPlaces } from './googlePlaces.js'
 
 const mapCategory = (raw = '') => {
   const value = raw.toLowerCase()
@@ -35,10 +37,29 @@ const normalizeTicketmasterEvent = (event) => {
   }
 }
 
-export const fetchExternalEvents = async (location = {}) => {
+const uniqById = (events) => {
+  const seen = new Set()
+  const out = []
+  for (const event of events) {
+    if (!event?.id) continue
+    if (seen.has(event.id)) continue
+    seen.add(event.id)
+    out.push(event)
+  }
+  return out
+}
+
+const filterByPreferences = (events, preferredCategories) => {
+  if (!preferredCategories || preferredCategories.length === 0) return events
+  const set = new Set(preferredCategories)
+  const filtered = events.filter((e) => set.has(e.category))
+  return filtered.length > 0 ? filtered : events
+}
+
+const fetchTicketmasterEvents = async (location = {}) => {
   const key = process.env.TICKETMASTER_API_KEY
   if (!key) {
-    return localEventFeed
+    return []
   }
 
   const now = new Date()
@@ -63,14 +84,34 @@ export const fetchExternalEvents = async (location = {}) => {
       `https://app.ticketmaster.com/discovery/v2/events.json?${params.toString()}`,
     )
     if (!response.ok) {
-      return localEventFeed
+      return []
     }
     const body = await response.json()
     const events = (body?._embedded?.events ?? [])
       .map(normalizeTicketmasterEvent)
       .filter(Boolean)
-    return events.length > 0 ? events : localEventFeed
+    return events
   } catch {
+    return []
+  }
+}
+
+export const fetchExternalEvents = async ({
+  location = {},
+  preferredCategories = [],
+} = {}) => {
+  const [ticketmaster, eventbrite] = await Promise.all([
+    fetchTicketmasterEvents(location),
+    fetchEventbriteEvents({ location }),
+  ])
+
+  let merged = uniqById([...ticketmaster, ...eventbrite])
+  merged = filterByPreferences(merged, preferredCategories)
+
+  if (merged.length === 0) {
     return localEventFeed
   }
+
+  const enriched = await enrichWithPlaces(merged, { location })
+  return enriched.length > 0 ? enriched : merged
 }

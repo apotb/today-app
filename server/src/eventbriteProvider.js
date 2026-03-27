@@ -1,0 +1,92 @@
+import { randomUUID } from 'node:crypto'
+
+const mapCategory = (raw = '') => {
+  const value = raw.toLowerCase()
+  if (value.includes('music') || value.includes('night')) return 'music-nightlife'
+  if (value.includes('sport') || value.includes('fitness')) return 'sports-fitness'
+  if (value.includes('art') || value.includes('museum') || value.includes('theatre')) return 'arts-culture'
+  if (value.includes('food') || value.includes('drink')) return 'food-drink'
+  if (value.includes('comedy') || value.includes('improv')) return 'comedy-improv'
+  if (value.includes('festival') || value.includes('fair')) return 'festivals-fairs'
+  if (value.includes('family') || value.includes('kids')) return 'family-friendly'
+  if (value.includes('film') || value.includes('media')) return 'film-media'
+  if (value.includes('tech') || value.includes('ai') || value.includes('software')) return 'tech-ai'
+  if (value.includes('volunteer')) return 'volunteering-community'
+  if (value.includes('outdoor') || value.includes('nature')) return 'outdoor-nature'
+  if (value.includes('wellness') || value.includes('yoga')) return 'wellness-self-care'
+  return 'social-meetups'
+}
+
+const normalizeEventbrite = (event) => {
+  const start = event?.start?.utc
+  const end = event?.end?.utc
+  if (!start || !end) return null
+
+  const venue = event?.venue
+  const venueName = venue?.name
+  const venueAddress =
+    venue?.address?.localized_address_display ?? venue?.address?.localized_multi_line_address_display
+
+  const image = event?.logo?.original?.url ?? event?.logo?.url
+  const categoryRaw =
+    event?.category?.name ??
+    event?.subcategory?.name ??
+    event?.format?.name ??
+    event?.name?.text ??
+    ''
+
+  return {
+    id: `eb_${event.id ?? randomUUID()}`,
+    title: event?.name?.text ?? 'Untitled Event',
+    description: event?.description?.text ?? 'No description available.',
+    startsAt: new Date(start).toISOString(),
+    endsAt: new Date(end).toISOString(),
+    cost: event?.is_free ? 0 : 0,
+    imageUrl:
+      image ?? 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=900&q=80',
+    category: mapCategory(categoryRaw),
+    location: venueName && venueAddress ? `${venueName} · ${venueAddress}` : venueName ?? 'Local Venue',
+  }
+}
+
+export async function fetchEventbriteEvents({ location = {} } = {}) {
+  const token = process.env.EVENTBRITE_API_TOKEN
+  if (!token) return []
+
+  const now = new Date()
+  const end = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+  const params = new URLSearchParams({
+    'start_date.range_start': now.toISOString(),
+    'start_date.range_end': end.toISOString(),
+    expand: 'venue,category,subcategory,format',
+    sort_by: 'date',
+  })
+
+  if (location.zip) {
+    params.set('location.address', location.zip)
+    params.set('location.within', '25mi')
+  } else if (location.latitude && location.longitude) {
+    params.set('location.latitude', `${location.latitude}`)
+    params.set('location.longitude', `${location.longitude}`)
+    params.set('location.within', '25mi')
+  } else {
+    params.set('location.address', 'United States')
+    params.set('location.within', '25mi')
+  }
+
+  try {
+    const response = await fetch(`https://www.eventbriteapi.com/v3/events/search/?${params}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    if (!response.ok) return []
+    const body = await response.json()
+    const events = (body?.events ?? []).map(normalizeEventbrite).filter(Boolean)
+    return events
+  } catch {
+    return []
+  }
+}
+

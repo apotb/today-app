@@ -75,6 +75,11 @@ const locationSchema = z.object({
   longitude: z.number().optional(),
 })
 
+const syncSchema = z.object({
+  sessionId: z.string().min(1).optional(),
+  location: locationSchema.optional(),
+})
+
 const getWindow = () => {
   const from = new Date()
   const to = new Date(Date.now() + 24 * 60 * 60 * 1000)
@@ -207,8 +212,22 @@ app.post('/api/events/import-local', async (req, res, next) => {
 
 app.post('/api/events/sync', async (req, res, next) => {
   try {
-    const location = locationSchema.parse(req.body?.location ?? {})
-    const fetchedEvents = await fetchExternalEvents(location)
+    const parsed = syncSchema.parse(req.body ?? {})
+    const location = locationSchema.parse(parsed.location ?? {})
+
+    let preferredCategories = []
+    if (parsed.sessionId) {
+      const prefs = await all(
+        'SELECT category, weight FROM user_preferences WHERE session_id = ? ORDER BY weight DESC',
+        [parsed.sessionId],
+      )
+      preferredCategories = prefs.map((p) => p.category)
+    }
+
+    const fetchedEvents = await fetchExternalEvents({
+      location,
+      preferredCategories,
+    })
     for (const event of fetchedEvents) {
       await run(
         `INSERT OR REPLACE INTO events (

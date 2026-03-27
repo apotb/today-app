@@ -40,10 +40,10 @@ export const api = {
       body: JSON.stringify({ location }),
     }),
 
-  syncEvents: (location: StoredLocation | null) =>
+  syncEvents: (sessionId: string, location: StoredLocation | null) =>
     request<{ success: boolean; imported: number }>('/events/sync', {
       method: 'POST',
-      body: JSON.stringify({ location: location ?? {} }),
+      body: JSON.stringify({ sessionId, location: location ?? {} }),
     }),
 
   discoverEvents: (sessionId: string) =>

@@ -25,7 +25,7 @@ export function OnboardingPage({ onComplete }: Props) {
     answers: Array<{ questionId: string; answer: boolean; categories: EventCategory[] }>,
   ) => {
     const sessionId = getSessionId()
-    await api.syncEvents(location)
+    await api.syncEvents(sessionId, location)
     await api.saveOnboardingResponses(sessionId, answers)
     await api.savePreferences(sessionId, categories)
     onComplete()

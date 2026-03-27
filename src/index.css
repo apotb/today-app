@@ -85,6 +85,58 @@ main {
   box-shadow: 0 14px 35px rgba(15, 32, 70, 0.09);
   touch-action: pan-y;
   cursor: grab;
+  width: min(560px, 100%);
+}
+
+.card-image-wrap {
+  position: relative;
+}
+
+.image-nav {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  pointer-events: none;
+}
+
+.image-nav-btn {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(228, 232, 241, 0.9);
+  background: rgba(255, 255, 255, 0.9);
+  color: #10213f;
+  font-size: 28px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 32, 70, 0.14);
+  backdrop-filter: blur(8px);
+  transition: transform 120ms ease, background 120ms ease, opacity 120ms ease;
+  opacity: 0.92;
+}
+
+.image-nav-btn:hover {
+  transform: scale(1.06);
+  background: rgba(255, 255, 255, 1);
+  opacity: 1;
+}
+
+.image-nav-btn:active {
+  transform: scale(0.98);
+}
+
+.image-nav-btn.left {
+  color: #cf2c2c;
+}
+
+.image-nav-btn.right {
+  color: #00b100;
 }
 
 .swipe-badge {
@@ -119,6 +171,10 @@ main {
 
 .card-body {
   padding: 18px;
+  max-height: 360px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
 }
 
 .chip {

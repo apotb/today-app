@@ -4,16 +4,18 @@ import { SwipeCard } from '../components/SwipeCard'
 import { getSessionId } from '../lib/session'
 import type { EventItem } from '../types/models'
 import { getStoredLocation } from '../lib/location'
+import { useIsDesktop } from '../lib/useIsDesktop'
 
 export function HomePage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const isDesktop = useIsDesktop()
   const loadEvents = async () => {
     setLoading(true)
     setError('')
     try {
-      await api.syncEvents(getStoredLocation())
+      await api.syncEvents(getSessionId(), getStoredLocation())
       const { events: list } = await api.discoverEvents(getSessionId())
       setEvents(list)
     } catch (e) {
@@ -36,6 +38,32 @@ export function HomePage() {
     setEvents((prev) => prev.slice(1))
   }
 
+  useEffect(() => {
+    if (!isDesktop) return
+
+    const isTypingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName.toLowerCase()
+      return tag === 'input' || tag === 'textarea' || target.isContentEditable
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!current) return
+      if (isTypingTarget(e.target)) return
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        void swipe('left')
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        void swipe('right')
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown, { passive: false })
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [current, isDesktop])
+
   if (loading) return <p className="status">Loading events...</p>
   if (error) return <p className="error">{error}</p>
 
@@ -43,7 +71,7 @@ export function HomePage() {
     <div className="page center-page">
       <h1>What&apos;s happening today?</h1>
       {current ? (
-        <SwipeCard event={current} onSwipe={swipe} />
+        <SwipeCard event={current} onSwipe={swipe} showDesktopNav={isDesktop} />
       ) : (
         <section className="panel">
           <p>No more events right now. Check back soon.</p>
