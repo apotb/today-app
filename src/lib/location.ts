@@ -1,11 +1,8 @@
 export type StoredLocation = {
-  mode: 'geolocation' | 'zip'
-  zip?: string
-  latitude?: number
-  longitude?: number
+  mode: 'geolocation'
+  latitude: number
+  longitude: number
 }
-
-import { api } from '../api/client'
 
 const LOCATION_KEY = 'today.location'
 
@@ -13,7 +10,21 @@ export const getStoredLocation = (): StoredLocation | null => {
   const raw = localStorage.getItem(LOCATION_KEY)
   if (!raw) return null
   try {
-    return JSON.parse(raw) as StoredLocation
+    const parsed = JSON.parse(raw) as {
+      latitude?: unknown
+      longitude?: unknown
+    }
+    const lat = Number(parsed.latitude)
+    const lon = Number(parsed.longitude)
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      localStorage.removeItem(LOCATION_KEY)
+      return null
+    }
+    return {
+      mode: 'geolocation',
+      latitude: lat,
+      longitude: lon,
+    }
   } catch {
     return null
   }
@@ -21,24 +32,6 @@ export const getStoredLocation = (): StoredLocation | null => {
 
 export const saveStoredLocation = (location: StoredLocation) => {
   localStorage.setItem(LOCATION_KEY, JSON.stringify(location))
-}
-
-/** Fills latitude/longitude from ZIP via API when missing (improves discover ordering and sync). */
-export async function ensureStoredLocationHasCoordinates(
-  loc: StoredLocation | null,
-): Promise<StoredLocation | null> {
-  if (!loc) return null
-  if (loc.latitude != null && loc.longitude != null) return loc
-  const z = loc.zip?.trim()
-  if (!z) return loc
-  try {
-    const { latitude, longitude } = await api.geocodeZip(z)
-    const next: StoredLocation = { ...loc, latitude, longitude }
-    saveStoredLocation(next)
-    return next
-  } catch {
-    return loc
-  }
 }
 
 export const requestBrowserLocation = () =>

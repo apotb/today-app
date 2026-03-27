@@ -8,6 +8,8 @@ type Props = {
   onSwipe: (direction: 'left' | 'right') => Promise<void> | void
   onOpenDetails?: () => void
   showDesktopNav?: boolean
+  /** Fills viewport height on Home (mobile deck layout). */
+  deckLayout?: boolean
 }
 
 const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'Free')
@@ -15,7 +17,7 @@ const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'F
 const SWIPE_THRESHOLD = 120
 const SWIPE_UP_THRESHOLD = 72
 
-export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav }: Props) {
+export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckLayout }: Props) {
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   const controls = useAnimation()
@@ -83,15 +85,21 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav }: Pro
         e.preventDefault()
         void triggerSwipe('right')
       }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        onOpenDetails?.()
+      }
     }
 
     window.addEventListener('keydown', onKeyDown, { passive: false })
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [showDesktopNav, animating])
+  }, [showDesktopNav, animating, onOpenDetails])
+
+  const cardClass = deckLayout ? 'swipe-card home-deck-card' : 'swipe-card'
 
   return (
     <motion.article
-      className="swipe-card"
+      className={cardClass}
       style={{ x, y, rotate }}
       drag={animating ? false : true}
       dragElastic={0.88}

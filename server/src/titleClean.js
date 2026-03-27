@@ -6,6 +6,15 @@ export const stripDateTimeFromTitle = (raw = '') => {
   let t = String(raw).replace(/\s+/g, ' ').trim()
   if (!t) return t
 
+  const leadingPatterns = [
+    /^(sun|mon|tue|wed|thu|fri|sat)\.?,?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(st|nd|rd|th)?,?\s*\d{2,4}\s*[-–—:.]+\s*/i,
+    /^(sun|mon|tue|wed|thu|fri|sat)\.?,?\s+\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*[-–—]\s*/i,
+  ]
+  for (const re of leadingPatterns) {
+    const next = t.replace(re, '').trim()
+    if (next.length >= 3) t = next
+  }
+
   const trailingPatterns = [
     /\s*[-–—|]\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(st|nd|rd|th)?,?\s*(\d{4})?.*$/i,
     /\s*[-–—|]\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?.*$/,

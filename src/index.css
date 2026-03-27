@@ -225,6 +225,20 @@ a {
   max-width: 560px;
 }
 
+.tutorial-footer {
+  min-height: 52px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.tutorial-footer-spacer {
+  width: 100%;
+  height: 48px;
+}
+
 .tutorial-heading {
   margin: 0;
   font-size: 1.05rem;
@@ -487,6 +501,108 @@ button.tutorial-dismiss {
   min-height: calc(100vh - 130px);
   display: grid;
   place-items: center;
+}
+
+.home-swipe-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 4px 8px;
+}
+
+.home-swipe-page h1 {
+  flex-shrink: 0;
+  margin-top: 0;
+  margin-bottom: 6px;
+  font-size: clamp(1.15rem, 4vw, 1.45rem);
+  line-height: 1.2;
+}
+
+.home-loading-copy {
+  margin: 0 0 10px;
+}
+
+.home-swipe-hint {
+  flex-shrink: 0;
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #506080;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.home-deck {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.swipe-card.home-deck-card {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  max-height: min(78dvh, calc(100dvh - 170px));
+}
+
+.home-deck-card .card-image-wrap {
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: 52dvh;
+  position: relative;
+}
+
+.home-deck-card .card-image {
+  height: 100%;
+  width: 100%;
+  min-height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.home-deck-card .card-body {
+  flex-shrink: 0;
+  padding: 14px 16px 16px;
+  max-height: none;
+  overflow: visible;
+}
+
+.home-deck-card .card-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.home-deck-card .description-preview {
+  -webkit-line-clamp: 2;
+}
+
+.home-deck-card .swipe-hint {
+  font-size: 0.72rem;
+  padding: 4px 8px;
+}
+
+.home-deck-card .swipe-hint-mobile {
+  bottom: 6px;
+  left: 8px;
+  right: auto;
+}
+
+.home-empty-panel {
+  margin-top: 10px;
+  flex-shrink: 0;
 }
 
 .feed-meta {
@@ -769,11 +885,31 @@ button.tutorial-dismiss {
   margin: 14px 0;
 }
 
-.modal-calendar-actions .btn {
+.modal-calendar-actions .modal-cal-btn {
   flex: 1;
   min-width: 132px;
+}
+
+.modal-cal-btn {
+  font-size: 0.95rem;
+  padding: 12px 14px;
+  line-height: 1.25;
   text-align: center;
+  box-sizing: border-box;
+}
+
+a.modal-cal-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+}
+
+.modal-cal-note {
+  font-size: 0.82rem;
+  color: #506080;
+  margin: 0 0 12px;
+  line-height: 1.35;
 }
 
 .event-detail-grid {

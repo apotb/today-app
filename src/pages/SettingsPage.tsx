@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import {
+  getStoredLocation,
   requestBrowserLocation,
   saveStoredLocation,
-  getStoredLocation,
-  type StoredLocation,
 } from '../lib/location'
 import { api } from '../api/client'
+import { dispatchFeedRefresh } from '../lib/feedEvents'
+import { getSessionId } from '../lib/session'
 import {
   getStoredDiscoverySettings,
   saveDiscoverySettings,
@@ -13,36 +14,12 @@ import {
 } from '../lib/discoverySettings'
 
 export function SettingsPage() {
-  const existing = getStoredLocation()
   const existingDiscovery = getStoredDiscoverySettings()
-  const [zip, setZip] = useState(existing?.zip ?? '')
   const [radius, setRadius] = useState(`${existingDiscovery.radius}`)
   const [unit, setUnit] = useState<DistanceUnit>(existingDiscovery.unit)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [zipWorking, setZipWorking] = useState(false)
-
-  const saveZip = async () => {
-    if (!zip.trim()) {
-      setError('Enter a ZIP code.')
-      return
-    }
-    setZipWorking(true)
-    setError('')
-    try {
-      let next: StoredLocation = { mode: 'zip', zip: zip.trim() }
-      try {
-        const { latitude, longitude } = await api.geocodeZip(next.zip!)
-        next = { ...next, latitude, longitude }
-      } catch {
-        /* keep ZIP without coords */
-      }
-      saveStoredLocation(next)
-      setMessage('ZIP code saved.')
-    } finally {
-      setZipWorking(false)
-    }
-  }
+  const [feedRefreshing, setFeedRefreshing] = useState(false)
 
   const saveRadius = () => {
     const value = Number(radius)
@@ -60,9 +37,29 @@ export function SettingsPage() {
       const location = await requestBrowserLocation()
       saveStoredLocation(location)
       setError('')
-      setMessage('Location access enabled.')
+      setMessage('Location updated.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to enable location.')
+    }
+  }
+
+  const refreshEventFeed = async () => {
+    const loc = getStoredLocation()
+    if (!loc) {
+      setError('Allow location first, then refresh.')
+      return
+    }
+    setFeedRefreshing(true)
+    setError('')
+    try {
+      const settings = getStoredDiscoverySettings()
+      await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit)
+      dispatchFeedRefresh()
+      setMessage('Event feed refreshed. Open Home to see updates.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not refresh feed.')
+    } finally {
+      setFeedRefreshing(false)
     }
   }
 
@@ -71,27 +68,30 @@ export function SettingsPage() {
       <h1>Settings</h1>
       <section className="panel settings-panel">
         <h2>Location</h2>
-        <p className="status">Use your location or set a ZIP code to find nearby events.</p>
+        <p className="status">Events use your device location (next 48 hours, within your radius).</p>
         <div className="settings-row">
-          <input
-            value={zip}
-            onChange={(e) => setZip(e.target.value)}
-            placeholder="Enter ZIP code"
-            className="input"
-          />
-          <button className="btn btn-primary" disabled={zipWorking} onClick={() => void saveZip()}>
-            {zipWorking ? 'Saving…' : 'Save ZIP'}
-          </button>
-          <button className="btn btn-secondary" onClick={() => void enableLocation()}>
-            Re-enable Location
+          <button type="button" className="btn btn-primary" onClick={() => void enableLocation()}>
+            Update location
           </button>
         </div>
         {message ? <p className="status">{message}</p> : null}
         {error ? <p className="error">{error}</p> : null}
       </section>
       <section className="panel settings-panel">
-        <h2>Discovery Radius</h2>
-        <p className="status">Choose how far away events can be from your location.</p>
+        <h2>Event feed</h2>
+        <p className="status">Re-run sync with your saved location and radius (48-hour window).</p>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={feedRefreshing}
+          onClick={() => void refreshEventFeed()}
+        >
+          {feedRefreshing ? 'Refreshing…' : 'Refresh event feed'}
+        </button>
+      </section>
+      <section className="panel settings-panel">
+        <h2>Discovery radius</h2>
+        <p className="status">How far from your location we search for events.</p>
         <div className="settings-row">
           <input
             value={radius}
@@ -108,8 +108,8 @@ export function SettingsPage() {
             <option value="miles">Miles</option>
             <option value="km">Kilometers</option>
           </select>
-          <button className="btn btn-primary" onClick={saveRadius}>
-            Save Radius
+          <button type="button" className="btn btn-primary" onClick={saveRadius}>
+            Save radius
           </button>
         </div>
       </section>

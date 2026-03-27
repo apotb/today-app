@@ -2,8 +2,30 @@ import { randomUUID } from 'node:crypto'
 import { fetchEventbriteEvents } from './eventbriteProvider.js'
 import { fetchGooglePlacesEvents } from './googlePlacesEvents.js'
 import { aggregateAndDedupeEvents } from './eventAggregation.js'
-import { resolveSearchLocation } from './geocode.js'
 import { stripDateTimeFromTitle } from './titleClean.js'
+
+const FEED_RANGE_MS = 48 * 60 * 60 * 1000
+
+const ticketmasterStartIso = (event) => {
+  const d = event?.dates?.start
+  if (!d) return null
+  if (d.dateTime) {
+    const parsed = new Date(d.dateTime)
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+  }
+  if (d.localDate) {
+    const lt = d.localTime ? String(d.localTime) : ''
+    let timePart = '12:00:00'
+    if (lt.length >= 8) timePart = lt.slice(0, 8)
+    else if (lt.length === 5) timePart = `${lt}:00`
+    const combined = `${d.localDate}T${timePart}`
+    const parsed = new Date(combined)
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+    const fallback = new Date(`${d.localDate}T12:00:00.000Z`)
+    if (!Number.isNaN(fallback.getTime())) return fallback.toISOString()
+  }
+  return null
+}
 
 const mapCategory = (raw = '') => {
   const value = raw.toLowerCase()
@@ -35,7 +57,7 @@ const cleanDescription = (value = '') => {
 }
 
 const normalizeTicketmasterEvent = (event) => {
-  const start = event?.dates?.start?.dateTime
+  const start = ticketmasterStartIso(event)
   if (!start) return null
   const venue = event?._embedded?.venues?.[0]
   const classification = event?.classifications?.[0]
@@ -53,7 +75,7 @@ const normalizeTicketmasterEvent = (event) => {
     id: `tm_${event.id ?? randomUUID()}`,
     title: stripDateTimeFromTitle(cleanTitle(event.name ?? 'Local Event')),
     description: cleanDescription(event.info ?? event.pleaseNote ?? ''),
-    startsAt: new Date(start).toISOString(),
+    startsAt: start,
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
     cost: event?.priceRanges?.[0]?.min ?? 0,
     imageUrl: image ?? null,
@@ -93,35 +115,26 @@ const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles
     return []
   }
 
-  const now = new Date()
-  const end = new Date(Date.now() + 24 * 60 * 60 * 1000)
-  const params = new URLSearchParams({
-    apikey: key,
-    size: '50',
-    sort: 'date,asc',
-    startDateTime: now.toISOString().replace(/\.\d{3}Z$/, 'Z'),
-    endDateTime: end.toISOString().replace(/\.\d{3}Z$/, 'Z'),
-  })
-
   const hasCoords =
     location.latitude != null &&
     location.longitude != null &&
     Number.isFinite(Number(location.latitude)) &&
     Number.isFinite(Number(location.longitude))
+  if (!hasCoords) return []
 
-  if (hasCoords) {
-    params.set('latlong', `${location.latitude},${location.longitude}`)
-    params.set('radius', `${radius}`)
-    params.set('unit', unit === 'km' ? 'km' : 'miles')
-  } else if (location.zip) {
-    const zip = `${location.zip}`.trim()
-    params.set('postalCode', zip)
-    params.set('radius', `${radius}`)
-    params.set('unit', unit === 'km' ? 'km' : 'miles')
-    if (/^\d{5}(-\d{4})?$/.test(zip)) {
-      params.set('countryCode', 'US')
-    }
-  }
+  const now = new Date()
+  const end = new Date(Date.now() + FEED_RANGE_MS)
+  const params = new URLSearchParams({
+    apikey: key,
+    size: '200',
+    sort: 'date,asc',
+    startDateTime: now.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    endDateTime: end.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+  })
+
+  params.set('latlong', `${location.latitude},${location.longitude}`)
+  params.set('radius', `${radius}`)
+  params.set('unit', unit === 'km' ? 'km' : 'miles')
 
   try {
     const response = await fetch(
@@ -141,9 +154,17 @@ const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles
 }
 
 export const fetchExternalEvents = async (options = {}) => {
-  const { radius = 25, unit = 'miles', preferredCategories = [] } = options
-  let { location = {} } = options
-  location = await resolveSearchLocation(location)
+  const { radius = 25, unit = 'miles' } = options
+  const { location = {} } = options
+
+  const hasCoords =
+    location.latitude != null &&
+    location.longitude != null &&
+    Number.isFinite(Number(location.latitude)) &&
+    Number.isFinite(Number(location.longitude))
+  if (!hasCoords) {
+    return []
+  }
 
   const [ticketmaster, eventbrite, googlePlaces] = await Promise.all([
     fetchTicketmasterEvents(location, radius, unit),
@@ -156,15 +177,5 @@ export const fetchExternalEvents = async (options = {}) => {
     return []
   }
 
-  let aggregate = aggregateAndDedupeEvents(merged)
-
-  if (preferredCategories.length > 0) {
-    const set = new Set(preferredCategories)
-    const filtered = aggregate.filter((e) => set.has(e.category))
-    if (filtered.length > 0) {
-      aggregate = filtered
-    }
-  }
-
-  return aggregate
+  return aggregateAndDedupeEvents(merged)
 }

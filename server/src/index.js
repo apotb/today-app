@@ -4,7 +4,6 @@ import cors from 'cors'
 import { z } from 'zod'
 import { all, get, initDb, run } from './db.js'
 import { fetchExternalEvents } from './eventsProvider.js'
-import { resolveSearchLocation } from './geocode.js'
 
 const app = express()
 const port = 4000
@@ -72,10 +71,15 @@ const attendanceSchema = z.object({
   status: z.enum(['attended', 'missed']),
 })
 
+const optionalFiniteNumber = z.preprocess((val) => {
+  if (val == null || val === '') return undefined
+  const n = Number(val)
+  return Number.isFinite(n) ? n : undefined
+}, z.number().optional())
+
 const locationSchema = z.object({
-  zip: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
+  latitude: optionalFiniteNumber,
+  longitude: optionalFiniteNumber,
 })
 
 const syncSchema = z.object({
@@ -85,13 +89,19 @@ const syncSchema = z.object({
   unit: z.enum(['miles', 'km']).optional(),
 })
 
-const geocodeSchema = z.object({
-  zip: z.string().min(3),
-})
+/** Discover / sync / providers: now → 48h ahead */
+const FEED_WINDOW_MS = 48 * 60 * 60 * 1000
 
 const getWindow = () => {
   const from = new Date()
-  const to = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  const to = new Date(Date.now() + FEED_WINDOW_MS)
+  return { from: from.toISOString(), to: to.toISOString() }
+}
+
+/** Liked events on calendar: load a bit past 3 local calendar days */
+const getMyEventsFetchWindow = () => {
+  const from = new Date()
+  const to = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000)
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
@@ -137,11 +147,14 @@ app.post('/api/preferences', async (req, res, next) => {
   try {
     const parsed = preferenceSchema.parse(req.body)
     await run('DELETE FROM user_preferences WHERE session_id = ?', [parsed.sessionId])
-    for (const category of parsed.categories) {
+    const n = parsed.categories.length
+    for (let i = 0; i < n; i += 1) {
+      const category = parsed.categories[i]
+      const weight = n - i
       await run(
         `INSERT INTO user_preferences (session_id, category, weight, updated_at)
-         VALUES (?, ?, 1, CURRENT_TIMESTAMP)`,
-        [parsed.sessionId, category],
+         VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+        [parsed.sessionId, category, weight],
       )
     }
     res.status(201).json({ success: true })
@@ -230,20 +243,6 @@ app.post('/api/interactions', async (req, res, next) => {
   }
 })
 
-app.post('/api/geocode', async (req, res, next) => {
-  try {
-    const { zip } = geocodeSchema.parse(req.body ?? {})
-    const resolved = await resolveSearchLocation({ zip: zip.trim() })
-    if (resolved.latitude == null || resolved.longitude == null) {
-      res.status(422).json({ message: 'Could not resolve that ZIP code.' })
-      return
-    }
-    res.json({ latitude: resolved.latitude, longitude: resolved.longitude })
-  } catch (error) {
-    next(error)
-  }
-})
-
 app.post('/api/events/sync', async (req, res, next) => {
   try {
     const parsed = syncSchema.parse(req.body ?? {})
@@ -251,20 +250,20 @@ app.post('/api/events/sync', async (req, res, next) => {
     const radius = parsed.radius ?? 25
     const unit = parsed.unit ?? 'miles'
 
-    let preferredCategories = []
-    if (parsed.sessionId) {
-      const prefRows = await all(
-        `SELECT category FROM user_preferences WHERE session_id = ? ORDER BY weight DESC`,
-        [parsed.sessionId],
-      )
-      preferredCategories = prefRows.map((r) => r.category)
+    if (
+      location.latitude == null ||
+      location.longitude == null ||
+      !Number.isFinite(Number(location.latitude)) ||
+      !Number.isFinite(Number(location.longitude))
+    ) {
+      res.status(400).json({ message: 'latitude and longitude are required' })
+      return
     }
 
     const fetchedEvents = await fetchExternalEvents({
       location,
       radius,
       unit,
-      preferredCategories,
     })
     await run(`DELETE FROM events WHERE id LIKE 'evt_%' OR id LIKE 'tm_%' OR id LIKE 'eb_%' OR id LIKE 'gp_%'`)
     for (const event of fetchedEvents) {
@@ -416,9 +415,11 @@ app.get('/api/events/discover', async (req, res, next) => {
       const dateRelevance = Math.max(0, 12 - Math.floor(hoursUntil))
 
       const preferenceScore =
-        prefWeight * 4 + categoryQuestionScore + behaviorScore + tagScreeningScore * 1.5
-
-      const score = preferenceScore + dateRelevance * 0.15
+        prefWeight * 150 +
+        categoryQuestionScore * 50 +
+        tagScreeningScore * 22 +
+        behaviorScore * 18
+      const score = preferenceScore + dateRelevance * 0.25
 
       return {
         ...event,
@@ -430,25 +431,26 @@ app.get('/api/events/discover', async (req, res, next) => {
         distanceMiles,
         dateRelevance,
         score,
+        tieBreak: Math.random(),
       }
     })
 
     enriched.sort((a, b) => {
-      if (b.prefWeight !== a.prefWeight) return b.prefWeight - a.prefWeight
-      if (b.categoryQuestionScore !== a.categoryQuestionScore) {
-        return b.categoryQuestionScore - a.categoryQuestionScore
+      if (b.preferenceScore !== a.preferenceScore) {
+        return b.preferenceScore - a.preferenceScore
       }
-      if (b.tagScreeningScore !== a.tagScreeningScore) {
-        return b.tagScreeningScore - a.tagScreeningScore
-      }
-      if (b.behaviorScore !== a.behaviorScore) return b.behaviorScore - a.behaviorScore
       const da = a.distanceMiles ?? 1e9
       const db = b.distanceMiles ?? 1e9
       if (da !== db) return da - db
-      return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+      const ta = new Date(a.starts_at).getTime()
+      const tb = new Date(b.starts_at).getTime()
+      if (ta !== tb) return ta - tb
+      return a.tieBreak - b.tieBreak
     })
 
-    res.json({ events: enriched })
+    res.json({
+      events: enriched.map(({ tieBreak, ...rest }) => rest),
+    })
   } catch (error) {
     next(error)
   }
@@ -474,7 +476,7 @@ app.get('/api/my-events', async (req, res, next) => {
       res.status(400).json({ message: 'sessionId is required' })
       return
     }
-    const { from, to } = getWindow()
+    const { from, to } = getMyEventsFetchWindow()
     const events = await all(
       `SELECT DISTINCT e.*
        FROM user_interactions ui

@@ -64,9 +64,9 @@ Base URL: `http://localhost:4000/api`
 - `POST /onboarding/responses`
   - Save yes/no questionnaire answers and mapped categories.
 - `POST /events/sync`
-  - Fetch and normalize external events based on ZIP/coordinates, user preferences, and radius.
+  - Fetch and normalize external events based on coordinates, user preferences, and radius (typically a ~48h window).
 - `GET /events/discover?sessionId=...`
-  - Returns events in next 24 hours not already liked/disliked.
+  - Returns events in roughly the next 48 hours not already liked/disliked.
   - Uses scoring from preferences and historical interactions.
 - `POST /interactions`
   - Store swipe interaction (`like`, `dislike`) per event.

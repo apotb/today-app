@@ -31,17 +31,20 @@ export function EventDetailsModal({ event, onClose }: Props) {
         </div>
         <p>{event.description}</p>
         <div className="modal-calendar-actions">
-          <a className="btn btn-secondary" href={gcal} target="_blank" rel="noopener noreferrer">
+          <a className="btn btn-secondary modal-cal-btn" href={gcal} target="_blank" rel="noopener noreferrer">
             Add to Google Calendar
           </a>
           <button
             type="button"
-            className="btn btn-secondary"
+            className="btn btn-secondary modal-cal-btn"
             onClick={() => downloadIcsFile(event)}
           >
             Add to Apple Calendar
           </button>
         </div>
+        <p className="modal-cal-note">
+          Apple Calendar uses a standard .ics file (opens in Calendar on most devices).
+        </p>
         <button type="button" className="btn btn-primary" onClick={onClose}>
           Close
         </button>

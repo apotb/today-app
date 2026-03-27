@@ -16,7 +16,7 @@ async function textSearch(query, { location = {}, radius = 25, unit = 'miles' } 
   const key = process.env.GOOGLE_PLACES_API_KEY
   if (!key) return null
 
-  const cacheKey = `${query}::${location.zip ?? ''}::${location.latitude ?? ''},${location.longitude ?? ''}`
+  const cacheKey = `${query}::${location.latitude ?? ''},${location.longitude ?? ''}`
   if (placeCache.has(cacheKey)) return placeCache.get(cacheKey)
 
   const params = new URLSearchParams({

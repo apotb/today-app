@@ -24,6 +24,7 @@ type Props = {
 export function SwipeTutorialOverlay({ onComplete }: Props) {
   const controls = useAnimation()
   const [hint, setHint] = useState<Hint>(null)
+  const [sequenceDone, setSequenceDone] = useState(false)
   const cancelled = useRef(false)
 
   useEffect(() => {
@@ -53,6 +54,8 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
       if (cancelled.current) return
       setHint(null)
       await controls.start({ x: 0, rotate: 0, transition: { duration: 0.28, ease: 'easeOut' } })
+      if (cancelled.current) return
+      setSequenceDone(true)
     }
     void run()
     return () => {
@@ -102,9 +105,15 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
             <p className="description description-preview">{DEMO_EVENT.description}</p>
           </div>
         </motion.article>
-        <button type="button" className="btn btn-primary tutorial-dismiss" onClick={onComplete}>
-          Got it — start exploring
-        </button>
+        <div className="tutorial-footer">
+          {sequenceDone ? (
+            <button type="button" className="btn btn-primary tutorial-dismiss" onClick={onComplete}>
+              Got it — start exploring
+            </button>
+          ) : (
+            <div className="tutorial-footer-spacer" aria-hidden />
+          )}
+        </div>
       </div>
     </div>
   )

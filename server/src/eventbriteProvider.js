@@ -79,7 +79,7 @@ export async function fetchEventbriteEvents({ location = {}, radius = 25, unit =
   if (!token) return []
 
   const now = new Date()
-  const end = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  const end = new Date(Date.now() + 48 * 60 * 60 * 1000)
 
   const params = new URLSearchParams({
     'start_date.range_start': now.toISOString(),
@@ -89,17 +89,12 @@ export async function fetchEventbriteEvents({ location = {}, radius = 25, unit =
   })
 
   const within = `${radius}${unit === 'km' ? 'km' : 'mi'}`
-  if (location.zip) {
-    const zip = `${location.zip}`.trim()
-    params.set('location.address', /^\d{5}(-\d{4})?$/.test(zip) ? `${zip}, USA` : zip)
-    params.set('location.within', within)
-  } else if (location.latitude && location.longitude) {
+  if (location.latitude != null && location.longitude != null) {
     params.set('location.latitude', `${location.latitude}`)
     params.set('location.longitude', `${location.longitude}`)
     params.set('location.within', within)
   } else {
-    params.set('location.address', 'United States')
-    params.set('location.within', within)
+    return []
   }
 
   try {
