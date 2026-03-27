@@ -38,16 +38,32 @@ const normalizeTicketmasterEvent = (event) => {
     category: mapCategory(categoryRaw),
     location: venue?.name ?? 'Local Venue',
     address: venueAddress || venue?.name || 'Local Venue',
+    sourceUrl: event?.url ?? null,
   }
 }
 
-const uniqById = (events) => {
-  const seen = new Set()
+const normalizeText = (value = '') => value.toLowerCase().replace(/\s+/g, ' ').trim()
+
+const eventFingerprint = (event) => {
+  const sourceUrl = event?.sourceUrl ? String(event.sourceUrl) : ''
+  if (sourceUrl) return `url:${sourceUrl}`
+  const title = normalizeText(event?.title ?? '')
+  const start = event?.startsAt ? new Date(event.startsAt).toISOString() : ''
+  const location = normalizeText(event?.location ?? '')
+  return `meta:${title}|${start}|${location}`
+}
+
+const uniqEvents = (events) => {
+  const seenIds = new Set()
+  const seenFingerprints = new Set()
   const out = []
   for (const event of events) {
     if (!event?.id) continue
-    if (seen.has(event.id)) continue
-    seen.add(event.id)
+    const fingerprint = eventFingerprint(event)
+    if (seenIds.has(event.id)) continue
+    if (seenFingerprints.has(fingerprint)) continue
+    seenIds.add(event.id)
+    seenFingerprints.add(fingerprint)
     out.push(event)
   }
   return out
@@ -125,7 +141,7 @@ export const fetchExternalEvents = async ({
     fetchEventbriteEvents({ location, radius, unit }),
   ])
 
-  let merged = uniqById([...ticketmaster, ...eventbrite])
+  let merged = uniqEvents([...ticketmaster, ...eventbrite])
   merged = filterByPreferences(merged, preferredCategories)
   merged = ensureUniqueImages(merged)
 

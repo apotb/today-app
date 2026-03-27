@@ -55,6 +55,8 @@ Base URL: `http://localhost:4000/api`
 
 - `GET /health`
   - Health check.
+- `GET /debug/providers`
+  - Shows whether Ticketmaster/Eventbrite/Google Places keys are loaded in the server process.
 - `GET /preferences/:sessionId`
   - Fetch saved categories for a user session.
 - `POST /preferences`
@@ -212,6 +214,13 @@ npm run dev:server
 
 - Change radius in `Settings` (miles/km).
 - Home swipe feed and My Events calendar re-sync automatically when radius is saved.
+
+### Verify API keys are loaded
+
+Open:
+- [http://localhost:4000/api/debug/providers](http://localhost:4000/api/debug/providers)
+
+You should see `true` for providers you configured in `.env.local`.
 
 ## Notes
 

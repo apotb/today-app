@@ -14,6 +14,7 @@ export function HomePage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [totalCount, setTotalCount] = useState(0)
   const isDesktop = useIsDesktop()
   const loadEvents = useCallback(async () => {
     setLoading(true)
@@ -28,6 +29,7 @@ export function HomePage() {
       )
       const { events: list } = await api.discoverEvents(getSessionId())
       setEvents(list)
+      setTotalCount(list.length)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load events.')
     } finally {
@@ -43,6 +45,7 @@ export function HomePage() {
 
   const current = events[0]
   const totalVisible = events.length
+  const progressPercent = totalCount > 0 ? Math.round((totalVisible / totalCount) * 100) : 0
 
   const swipe = async (direction: 'left' | 'right') => {
     if (!current) return
@@ -51,7 +54,25 @@ export function HomePage() {
     setEvents((prev) => prev.slice(1))
   }
 
-  if (loading) return <p className="status">Loading events...</p>
+  if (loading) {
+    return (
+      <div className="page center-page">
+        <h1>What&apos;s happening today?</h1>
+        <div className="feed-meta">
+          <p className="status">Loading events...</p>
+        </div>
+        <section className="swipe-card skeleton-card" aria-hidden="true">
+          <div className="skeleton-image shimmer" />
+          <div className="card-body">
+            <div className="skeleton-line short shimmer" />
+            <div className="skeleton-line shimmer" />
+            <div className="skeleton-line shimmer" />
+            <div className="skeleton-line long shimmer" />
+          </div>
+        </section>
+      </div>
+    )
+  }
   if (error) return <p className="error">{error}</p>
 
   return (
@@ -65,6 +86,11 @@ export function HomePage() {
           <button className="btn btn-ghost" onClick={() => void loadEvents()}>
             Refresh feed
           </button>
+        </div>
+      ) : null}
+      {current ? (
+        <div className="cards-progress" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
+          <div className="cards-progress-bar" style={{ width: `${progressPercent}%` }} />
         </div>
       ) : null}
       {current ? (

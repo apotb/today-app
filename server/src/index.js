@@ -93,6 +93,14 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
 })
 
+app.get('/api/debug/providers', (_req, res) => {
+  res.json({
+    ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
+    eventbriteConfigured: Boolean(process.env.EVENTBRITE_API_TOKEN),
+    googlePlacesConfigured: Boolean(process.env.GOOGLE_PLACES_API_KEY),
+  })
+})
+
 app.get('/api/preferences/:sessionId', async (req, res, next) => {
   try {
     const { sessionId } = req.params
@@ -255,7 +263,15 @@ app.post('/api/events/sync', async (req, res, next) => {
         ],
       )
     }
-    res.json({ success: true, imported: fetchedEvents.length })
+    res.json({
+      success: true,
+      imported: fetchedEvents.length,
+      providers: {
+        ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
+        eventbriteConfigured: Boolean(process.env.EVENTBRITE_API_TOKEN),
+        googlePlacesConfigured: Boolean(process.env.GOOGLE_PLACES_API_KEY),
+      },
+    })
   } catch (error) {
     next(error)
   }

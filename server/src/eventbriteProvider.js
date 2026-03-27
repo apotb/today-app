@@ -46,6 +46,7 @@ const normalizeEventbrite = (event) => {
     category: mapCategory(categoryRaw),
     location: venueName && venueAddress ? `${venueName} · ${venueAddress}` : venueName ?? 'Local Venue',
     address: venueAddress ?? venueName ?? 'Local Venue',
+    sourceUrl: event?.url ?? null,
   }
 }
 

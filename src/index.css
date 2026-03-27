@@ -262,6 +262,73 @@ main {
   margin-bottom: 12px;
 }
 
+.cards-progress {
+  width: min(560px, 100%);
+  height: 10px;
+  border-radius: 999px;
+  background: #e6edf9;
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid #dbe3f2;
+}
+
+.cards-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #00b100, #2fd66e);
+  transition: width 260ms ease;
+}
+
+.skeleton-card {
+  cursor: default;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 250px;
+  background: #e8eef8;
+}
+
+.skeleton-line {
+  height: 14px;
+  border-radius: 8px;
+  background: #e8eef8;
+  margin-bottom: 12px;
+}
+
+.skeleton-line.short {
+  width: 35%;
+}
+
+.skeleton-line.long {
+  width: 80%;
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 120%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(180%);
+  }
+}
+
 .onboarding-panel {
   width: min(760px, 100%);
   background: #fff;
