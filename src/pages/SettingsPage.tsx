@@ -1,5 +1,11 @@
 import { useState } from 'react'
-import { requestBrowserLocation, saveStoredLocation, getStoredLocation } from '../lib/location'
+import {
+  requestBrowserLocation,
+  saveStoredLocation,
+  getStoredLocation,
+  type StoredLocation,
+} from '../lib/location'
+import { api } from '../api/client'
 import {
   getStoredDiscoverySettings,
   saveDiscoverySettings,
@@ -14,15 +20,28 @@ export function SettingsPage() {
   const [unit, setUnit] = useState<DistanceUnit>(existingDiscovery.unit)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [zipWorking, setZipWorking] = useState(false)
 
-  const saveZip = () => {
+  const saveZip = async () => {
     if (!zip.trim()) {
       setError('Enter a ZIP code.')
       return
     }
-    saveStoredLocation({ mode: 'zip', zip: zip.trim() })
+    setZipWorking(true)
     setError('')
-    setMessage('ZIP code saved.')
+    try {
+      let next: StoredLocation = { mode: 'zip', zip: zip.trim() }
+      try {
+        const { latitude, longitude } = await api.geocodeZip(next.zip!)
+        next = { ...next, latitude, longitude }
+      } catch {
+        /* keep ZIP without coords */
+      }
+      saveStoredLocation(next)
+      setMessage('ZIP code saved.')
+    } finally {
+      setZipWorking(false)
+    }
   }
 
   const saveRadius = () => {
@@ -60,8 +79,8 @@ export function SettingsPage() {
             placeholder="Enter ZIP code"
             className="input"
           />
-          <button className="btn btn-primary" onClick={saveZip}>
-            Save ZIP
+          <button className="btn btn-primary" disabled={zipWorking} onClick={() => void saveZip()}>
+            {zipWorking ? 'Saving…' : 'Save ZIP'}
           </button>
           <button className="btn btn-secondary" onClick={() => void enableLocation()}>
             Re-enable Location

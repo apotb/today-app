@@ -66,21 +66,31 @@ export function PreferenceQuiz({ onSubmit }: Props) {
         tags: currentQuestion.tags,
       },
     ]
-    setAnswers(nextAnswers)
     const nextPool = remaining.filter((q) => q.id !== currentQuestion.id)
-    setRemaining(nextPool)
 
     if (nextAnswers.length >= QUESTION_TARGET) {
+      setSaving(true)
       void finish(nextAnswers)
       return
     }
 
+    setAnswers(nextAnswers)
+    setRemaining(nextPool)
     const nextQ = pickNextQuestion(nextPool, selected, nextAnswers)
     setCurrentQuestion(nextQ)
     if (!nextQ && nextAnswers.length < QUESTION_TARGET) {
       setError('No more questions available; finishing early.')
+      setSaving(true)
       void finish(nextAnswers)
     }
+  }
+
+  if (phase === 'questions' && saving) {
+    return (
+      <section className="onboarding-panel">
+        <p className="status">Saving your preferences...</p>
+      </section>
+    )
   }
 
   if (phase === 'categories') {

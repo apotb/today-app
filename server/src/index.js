@@ -4,6 +4,7 @@ import cors from 'cors'
 import { z } from 'zod'
 import { all, get, initDb, run } from './db.js'
 import { fetchExternalEvents } from './eventsProvider.js'
+import { resolveSearchLocation } from './geocode.js'
 
 const app = express()
 const port = 4000
@@ -82,6 +83,10 @@ const syncSchema = z.object({
   location: locationSchema.optional(),
   radius: z.number().positive().max(200).optional(),
   unit: z.enum(['miles', 'km']).optional(),
+})
+
+const geocodeSchema = z.object({
+  zip: z.string().min(3),
 })
 
 const getWindow = () => {
@@ -225,6 +230,20 @@ app.post('/api/interactions', async (req, res, next) => {
   }
 })
 
+app.post('/api/geocode', async (req, res, next) => {
+  try {
+    const { zip } = geocodeSchema.parse(req.body ?? {})
+    const resolved = await resolveSearchLocation({ zip: zip.trim() })
+    if (resolved.latitude == null || resolved.longitude == null) {
+      res.status(422).json({ message: 'Could not resolve that ZIP code.' })
+      return
+    }
+    res.json({ latitude: resolved.latitude, longitude: resolved.longitude })
+  } catch (error) {
+    next(error)
+  }
+})
+
 app.post('/api/events/sync', async (req, res, next) => {
   try {
     const parsed = syncSchema.parse(req.body ?? {})
@@ -232,10 +251,20 @@ app.post('/api/events/sync', async (req, res, next) => {
     const radius = parsed.radius ?? 25
     const unit = parsed.unit ?? 'miles'
 
+    let preferredCategories = []
+    if (parsed.sessionId) {
+      const prefRows = await all(
+        `SELECT category FROM user_preferences WHERE session_id = ? ORDER BY weight DESC`,
+        [parsed.sessionId],
+      )
+      preferredCategories = prefRows.map((r) => r.category)
+    }
+
     const fetchedEvents = await fetchExternalEvents({
       location,
       radius,
       unit,
+      preferredCategories,
     })
     await run(`DELETE FROM events WHERE id LIKE 'evt_%' OR id LIKE 'tm_%' OR id LIKE 'eb_%' OR id LIKE 'gp_%'`)
     for (const event of fetchedEvents) {
@@ -372,30 +401,32 @@ app.get('/api/events/discover', async (req, res, next) => {
       } catch {
         eventTags = []
       }
-      let tagMatch = 0
+      let tagScreeningScore = 0
       for (const t of eventTags) {
-        tagMatch += userTagScores.get(t) ?? 0
+        tagScreeningScore += userTagScores.get(t) ?? 0
       }
 
-      const prefScore = prefMap.get(event.category) ? 4 : 0
+      const prefWeight = prefMap.get(event.category) ?? 0
       const categoryQuestionScore = questionScoreMap.get(event.category) ?? 0
       const behaviorScore = scoreByCategory.get(event.category) ?? 0
-      const preferenceScore =
-        prefScore + categoryQuestionScore + behaviorScore + tagMatch * 1.5
 
       const distanceMiles = haversineMiles(userLat, userLon, event.latitude, event.longitude)
-      const dateRelevance = Math.max(
-        0,
-        12 -
-          Math.floor(
-            (new Date(event.starts_at).getTime() - Date.now()) / (60 * 60 * 1000),
-          ),
-      )
+      const hoursUntil =
+        (new Date(event.starts_at).getTime() - Date.now()) / (60 * 60 * 1000)
+      const dateRelevance = Math.max(0, 12 - Math.floor(hoursUntil))
+
+      const preferenceScore =
+        prefWeight * 4 + categoryQuestionScore + behaviorScore + tagScreeningScore * 1.5
+
       const score = preferenceScore + dateRelevance * 0.15
 
       return {
         ...event,
         preferenceScore,
+        prefWeight,
+        categoryQuestionScore,
+        tagScreeningScore,
+        behaviorScore,
         distanceMiles,
         dateRelevance,
         score,
@@ -403,7 +434,14 @@ app.get('/api/events/discover', async (req, res, next) => {
     })
 
     enriched.sort((a, b) => {
-      if (b.preferenceScore !== a.preferenceScore) return b.preferenceScore - a.preferenceScore
+      if (b.prefWeight !== a.prefWeight) return b.prefWeight - a.prefWeight
+      if (b.categoryQuestionScore !== a.categoryQuestionScore) {
+        return b.categoryQuestionScore - a.categoryQuestionScore
+      }
+      if (b.tagScreeningScore !== a.tagScreeningScore) {
+        return b.tagScreeningScore - a.tagScreeningScore
+      }
+      if (b.behaviorScore !== a.behaviorScore) return b.behaviorScore - a.behaviorScore
       const da = a.distanceMiles ?? 1e9
       const db = b.distanceMiles ?? 1e9
       if (da !== db) return da - db

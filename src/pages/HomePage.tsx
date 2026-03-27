@@ -1,33 +1,36 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { SwipeCard } from '../components/SwipeCard'
+import { SwipeTutorialOverlay } from '../components/SwipeTutorialOverlay'
+import { useNavigationHints } from '../components/NavigationHintsContext'
 import { getSessionId } from '../lib/session'
 import type { EventItem } from '../types/models'
-import { getStoredLocation } from '../lib/location'
+import { ensureStoredLocationHasCoordinates, getStoredLocation } from '../lib/location'
 import { useIsDesktop } from '../lib/useIsDesktop'
 import {
   getStoredDiscoverySettings,
   onDiscoverySettingsChanged,
 } from '../lib/discoverySettings'
+import { TUTORIAL_SWIPE_KEY } from '../lib/onboardingStorage'
 
 export function HomePage() {
+  const { notifyFirstLike } = useNavigationHints()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [totalCount, setTotalCount] = useState(0)
+  const [tutorialDismissed, setTutorialDismissed] = useState(
+    () => localStorage.getItem(TUTORIAL_SWIPE_KEY) === '1',
+  )
   const isDesktop = useIsDesktop()
   const loadEvents = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const settings = getStoredDiscoverySettings()
-      await api.syncEvents(
-        getSessionId(),
-        getStoredLocation(),
-        settings.radius,
-        settings.unit,
-      )
-      const { events: list } = await api.discoverEvents(getSessionId(), getStoredLocation())
+      const loc = await ensureStoredLocationHasCoordinates(getStoredLocation())
+      await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit)
+      const { events: list } = await api.discoverEvents(getSessionId(), loc)
       setEvents(list)
       setTotalCount(list.length)
     } catch (e) {
@@ -51,7 +54,15 @@ export function HomePage() {
     if (!current) return
     const action = direction === 'right' ? 'like' : 'dislike'
     await api.submitInteraction(getSessionId(), current.id, action)
+    if (direction === 'right') notifyFirstLike()
     setEvents((prev) => prev.slice(1))
+  }
+
+  const showTutorial = !loading && !error && !tutorialDismissed
+
+  const completeTutorial = () => {
+    localStorage.setItem(TUTORIAL_SWIPE_KEY, '1')
+    setTutorialDismissed(true)
   }
 
   if (loading) {
@@ -78,7 +89,7 @@ export function HomePage() {
   return (
     <div className="page center-page">
       <h1>What&apos;s happening today?</h1>
-      {current ? (
+      {!showTutorial && current ? (
         <div className="feed-meta">
           <p className="status">
             {totalVisible} event{totalVisible === 1 ? '' : 's'} left in your next-24-hour feed
@@ -88,21 +99,23 @@ export function HomePage() {
           </button>
         </div>
       ) : null}
-      {current ? (
+      {!showTutorial && current ? (
         <div className="cards-progress" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
           <div className="cards-progress-bar" style={{ width: `${progressPercent}%` }} />
         </div>
       ) : null}
-      {current ? (
+      {showTutorial ? <SwipeTutorialOverlay onComplete={completeTutorial} /> : null}
+      {!showTutorial && current ? (
         <SwipeCard event={current} onSwipe={swipe} showDesktopNav={isDesktop} />
-      ) : (
+      ) : null}
+      {!showTutorial && !current ? (
         <section className="panel">
           <p>No more events right now. Check back soon.</p>
           <button className="btn btn-primary" onClick={() => void loadEvents()}>
             Refresh
           </button>
         </section>
-      )}
+      ) : null}
     </div>
   )
 }

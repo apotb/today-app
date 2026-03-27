@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { stripDateTimeFromTitle } from './titleClean.js'
 
 const mapCategoryFromTypes = (types = []) => {
   const t = types.join(' ').toLowerCase()
@@ -51,7 +52,7 @@ export async function fetchGooglePlacesEvents({ location = {}, radius = 25, unit
 
       return {
         id: `gp_${place.place_id ?? randomUUID()}`,
-        title: cleanTitle(place.name ?? 'Local spot'),
+        title: stripDateTimeFromTitle(cleanTitle(place.name ?? 'Local spot')),
         description: `Nearby venue: ${place.vicinity ?? place.formatted_address ?? 'your area'}.`,
         startsAt: start.toISOString(),
         endsAt: end.toISOString(),

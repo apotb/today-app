@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { tagsForCategory } from './categoryTags.js'
+import { stripDateTimeFromTitle } from './titleClean.js'
 
 const DATE_TIME_PATTERNS = [
   /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
@@ -77,7 +78,9 @@ function mergePair(a, b) {
   const tags = Array.from(new Set([...(best.tags ?? []), ...(other.tags ?? [])]))
   return {
     ...best,
-    title: best.title.length >= other.title.length ? best.title : other.title,
+    title: stripDateTimeFromTitle(
+      best.title.length >= other.title.length ? best.title : other.title,
+    ),
     description: (best.description?.length ?? 0) >= (other.description?.length ?? 0)
       ? best.description
       : other.description,
@@ -198,7 +201,7 @@ export function aggregateAndDedupeEvents(rawEvents) {
 
     return {
       id: canonicalId,
-      title: e.title,
+      title: stripDateTimeFromTitle(e.title),
       description: e.description,
       startsAt: e.startsAt,
       endsAt: e.endsAt,

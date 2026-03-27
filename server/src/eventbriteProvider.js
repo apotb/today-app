@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { stripDateTimeFromTitle } from './titleClean.js'
 
 const mapCategory = (raw = '') => {
   const value = raw.toLowerCase()
@@ -55,7 +56,7 @@ const normalizeEventbrite = (event) => {
 
   return {
     id: `eb_${event.id ?? randomUUID()}`,
-    title: cleanTitle(event?.name?.text ?? 'Local Event'),
+    title: stripDateTimeFromTitle(cleanTitle(event?.name?.text ?? 'Local Event')),
     description: cleanDescription(event?.description?.text ?? ''),
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(end).toISOString(),

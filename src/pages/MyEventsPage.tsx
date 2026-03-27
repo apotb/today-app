@@ -5,7 +5,7 @@ import { EventDetailsModal } from '../components/EventDetailsModal'
 import { getSessionId } from '../lib/session'
 import { formatDateTime12h } from '../lib/format'
 import type { EventItem } from '../types/models'
-import { getStoredLocation } from '../lib/location'
+import { ensureStoredLocationHasCoordinates, getStoredLocation } from '../lib/location'
 import {
   getStoredDiscoverySettings,
   onDiscoverySettingsChanged,
@@ -21,12 +21,8 @@ export function MyEventsPage() {
   const refreshEvents = useCallback(async () => {
     try {
       const settings = getStoredDiscoverySettings()
-      await api.syncEvents(
-        getSessionId(),
-        getStoredLocation(),
-        settings.radius,
-        settings.unit,
-      )
+      const loc = await ensureStoredLocationHasCoordinates(getStoredLocation())
+      await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit)
       const response = await api.getMyEvents(getSessionId())
       setEvents(response.events)
       await maybeNotifyUpcoming(response.events)
@@ -62,7 +58,7 @@ export function MyEventsPage() {
 
   return (
     <div className="page">
-      <h1>My Events</h1>
+      <h1>Events</h1>
       {error ? <p className="error">{error}</p> : <EventCalendar events={upcoming} onSelect={setSelected} />}
       <section className="panel past-events">
         <h2>Past Events</h2>

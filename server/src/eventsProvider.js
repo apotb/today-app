@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { fetchEventbriteEvents } from './eventbriteProvider.js'
 import { fetchGooglePlacesEvents } from './googlePlacesEvents.js'
 import { aggregateAndDedupeEvents } from './eventAggregation.js'
+import { resolveSearchLocation } from './geocode.js'
+import { stripDateTimeFromTitle } from './titleClean.js'
 
 const mapCategory = (raw = '') => {
   const value = raw.toLowerCase()
@@ -49,7 +51,7 @@ const normalizeTicketmasterEvent = (event) => {
 
   return {
     id: `tm_${event.id ?? randomUUID()}`,
-    title: cleanTitle(event.name ?? 'Local Event'),
+    title: stripDateTimeFromTitle(cleanTitle(event.name ?? 'Local Event')),
     description: cleanDescription(event.info ?? event.pleaseNote ?? ''),
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
@@ -126,7 +128,9 @@ const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles
 }
 
 export const fetchExternalEvents = async (options = {}) => {
-  const { location = {}, radius = 25, unit = 'miles' } = options
+  const { radius = 25, unit = 'miles', preferredCategories = [] } = options
+  let { location = {} } = options
+  location = await resolveSearchLocation(location)
 
   const [ticketmaster, eventbrite, googlePlaces] = await Promise.all([
     fetchTicketmasterEvents(location, radius, unit),
@@ -134,10 +138,20 @@ export const fetchExternalEvents = async (options = {}) => {
     fetchGooglePlacesEvents({ location, radius, unit }),
   ])
 
-  const merged = uniqEvents([...ticketmaster, ...eventbrite, ...googlePlaces])
+  let merged = uniqEvents([...ticketmaster, ...eventbrite, ...googlePlaces])
   if (merged.length === 0) {
     return []
   }
 
-  return aggregateAndDedupeEvents(merged)
+  let aggregate = aggregateAndDedupeEvents(merged)
+
+  if (preferredCategories.length > 0) {
+    const set = new Set(preferredCategories)
+    const filtered = aggregate.filter((e) => set.has(e.category))
+    if (filtered.length > 0) {
+      aggregate = filtered
+    }
+  }
+
+  return aggregate
 }

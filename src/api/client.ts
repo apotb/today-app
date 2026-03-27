@@ -39,6 +39,12 @@ export const api = {
       body: JSON.stringify({ location }),
     }),
 
+  geocodeZip: (zip: string) =>
+    request<{ latitude: number; longitude: number }>('/geocode', {
+      method: 'POST',
+      body: JSON.stringify({ zip }),
+    }),
+
   syncEvents: (
     sessionId: string,
     location: StoredLocation | null,

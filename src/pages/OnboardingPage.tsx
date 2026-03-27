@@ -7,6 +7,7 @@ import type { AnswerSoFar } from '../lib/questionPool'
 import type { EventCategory } from '../types/models'
 import { getStoredDiscoverySettings } from '../lib/discoverySettings'
 import {
+  ensureStoredLocationHasCoordinates,
   getStoredLocation,
   requestBrowserLocation,
   saveStoredLocation,
@@ -22,13 +23,15 @@ export function OnboardingPage({ onComplete }: Props) {
   const [location, setLocation] = useState<StoredLocation | null>(getStoredLocation())
   const [zipInput, setZipInput] = useState('')
   const [locationError, setLocationError] = useState('')
+  const [zipWorking, setZipWorking] = useState(false)
 
   const savePreferences = async (categories: EventCategory[], answers: AnswerSoFar[]) => {
     const sessionId = getSessionId()
     const settings = getStoredDiscoverySettings()
     await api.savePreferences(sessionId, categories)
     await api.saveOnboardingResponses(sessionId, answers)
-    await api.syncEvents(sessionId, location, settings.radius, settings.unit)
+    const loc = await ensureStoredLocationHasCoordinates(location)
+    await api.syncEvents(sessionId, loc, settings.radius, settings.unit)
     onComplete()
     navigate('/')
   }
@@ -44,15 +47,26 @@ export function OnboardingPage({ onComplete }: Props) {
     }
   }
 
-  const saveZip = () => {
+  const saveZip = async () => {
     if (!zipInput.trim()) {
       setLocationError('Enter a ZIP code.')
       return
     }
-    const zipLocation: StoredLocation = { mode: 'zip', zip: zipInput.trim() }
-    saveStoredLocation(zipLocation)
-    setLocation(zipLocation)
+    setZipWorking(true)
     setLocationError('')
+    try {
+      let zipLocation: StoredLocation = { mode: 'zip', zip: zipInput.trim() }
+      try {
+        const { latitude, longitude } = await api.geocodeZip(zipLocation.zip!)
+        zipLocation = { ...zipLocation, latitude, longitude }
+      } catch {
+        /* coords optional when geocode is unavailable */
+      }
+      saveStoredLocation(zipLocation)
+      setLocation(zipLocation)
+    } finally {
+      setZipWorking(false)
+    }
   }
 
   if (!location) {
@@ -76,8 +90,13 @@ export function OnboardingPage({ onComplete }: Props) {
                 className="input"
                 inputMode="numeric"
               />
-              <button type="button" className="btn btn-secondary" onClick={saveZip}>
-                Continue with ZIP
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={zipWorking}
+                onClick={() => void saveZip()}
+              >
+                {zipWorking ? 'Looking up ZIP…' : 'Continue with ZIP'}
               </button>
             </div>
           </div>
