@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useLayoutEffect } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import { NavigationHintsProvider, useNavigationHints } from './NavigationHintsContext'
@@ -87,6 +88,26 @@ function NavDummy({ children }: { children: ReactNode }) {
 
 function LayoutShell() {
   const { blockUntilEventsTab } = useNavigationHints()
+
+  useLayoutEffect(() => {
+    const top = document.querySelector('.app-top-brand')
+    const bottom = document.querySelector('.bottom-nav')
+    const update = () => {
+      const h = top?.getBoundingClientRect().height ?? 64
+      const b = bottom?.getBoundingClientRect().height ?? 72
+      document.documentElement.style.setProperty('--app-chrome-top', `${Math.ceil(h)}px`)
+      document.documentElement.style.setProperty('--app-chrome-bottom', `${Math.ceil(b)}px`)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    if (top) ro.observe(top)
+    if (bottom) ro.observe(bottom)
+    window.addEventListener('resize', update)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [])
 
   return (
     <div className="app-shell">

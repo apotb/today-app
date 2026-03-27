@@ -110,6 +110,7 @@ export function HomePage() {
       {!showTutorial && current ? (
         <div className="home-deck">
           <SwipeCard
+            key={current.id}
             event={current}
             onSwipe={swipe}
             onOpenDetails={() => setDetailEvent(current)}

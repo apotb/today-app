@@ -29,14 +29,18 @@ export function MyEventsPage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [selected, setSelected] = useState<EventItem | null>(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [nowMs, setNowMs] = useState(() => Date.now())
 
   const refreshEvents = useCallback(async () => {
+    setLoading(true)
+    setError('')
     try {
       const settings = getStoredDiscoverySettings()
       const loc = getStoredLocation()
       if (!loc) {
         setError('Allow location in Settings to load your events.')
+        setEvents([])
         return
       }
       await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit)
@@ -46,6 +50,8 @@ export function MyEventsPage() {
       await maybeNotifyUpcoming(response.events)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load your events.')
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -78,7 +84,16 @@ export function MyEventsPage() {
         })}{' '}
         (no past events)
       </p>
-      {error ? <p className="error">{error}</p> : <EventCalendar events={upcoming} onSelect={setSelected} />}
+      {loading ? (
+        <div className="events-loading">
+          <div className="spinner" role="status" aria-label="Loading events" />
+          <span>Loading your events…</span>
+        </div>
+      ) : error ? (
+        <p className="error">{error}</p>
+      ) : (
+        <EventCalendar events={upcoming} onSelect={setSelected} />
+      )}
       {selected ? <EventDetailsModal event={selected} onClose={() => setSelected(null)} /> : null}
     </div>
   )
