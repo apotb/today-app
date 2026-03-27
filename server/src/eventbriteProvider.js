@@ -90,7 +90,8 @@ export async function fetchEventbriteEvents({ location = {}, radius = 25, unit =
 
   const within = `${radius}${unit === 'km' ? 'km' : 'mi'}`
   if (location.zip) {
-    params.set('location.address', location.zip)
+    const zip = `${location.zip}`.trim()
+    params.set('location.address', /^\d{5}(-\d{4})?$/.test(zip) ? `${zip}, USA` : zip)
     params.set('location.within', within)
   } else if (location.latitude && location.longitude) {
     params.set('location.latitude', `${location.latitude}`)

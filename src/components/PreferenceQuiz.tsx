@@ -131,7 +131,8 @@ export function PreferenceQuiz({ onSubmit }: Props) {
       <p className="stepper">
         Question {answers.length + 1} of {QUESTION_TARGET}
       </p>
-      <h1>{currentQuestion.prompt}</h1>
+      <p className="quiz-attend-label">Would you attend:</p>
+      <h1 className="quiz-question-heading">{currentQuestion.prompt}</h1>
       <div className="question-actions">
         <button className="btn btn-secondary large" onClick={() => answerQuestion(false)} disabled={saving}>
           No

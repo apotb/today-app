@@ -3,46 +3,81 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import { FIRST_LIKE_EVENTS_TAB_KEY } from '../lib/onboardingStorage'
+import { useLocation } from 'react-router-dom'
+import {
+  FIRST_LIKE_EVENTS_TAB_COMPLETE_KEY,
+  FIRST_LIKE_PENDING_OPEN_EVENTS_KEY,
+} from '../lib/onboardingStorage'
+
+/** Earlier build stored this on first like; treat as completed hint flow. */
+const LEGACY_FIRST_LIKE_HINT_KEY = 'today.hint.firstLikeEventsTab'
 
 type Ctx = {
-  pulseEventsTab: boolean
-  firstLikeMessage: string | null
+  blockUntilEventsTab: boolean
   notifyFirstLike: () => void
-  dismissFirstLikeMessage: () => void
 }
 
 const NavigationHintsContext = createContext<Ctx | null>(null)
 
+function syncBlockingState(): boolean {
+  try {
+    if (localStorage.getItem(LEGACY_FIRST_LIKE_HINT_KEY) === '1') {
+      localStorage.removeItem(LEGACY_FIRST_LIKE_HINT_KEY)
+      localStorage.setItem(FIRST_LIKE_EVENTS_TAB_COMPLETE_KEY, '1')
+    }
+    if (localStorage.getItem(FIRST_LIKE_EVENTS_TAB_COMPLETE_KEY) === '1') return false
+    return localStorage.getItem(FIRST_LIKE_PENDING_OPEN_EVENTS_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function NavigationHintsProvider({ children }: { children: ReactNode }) {
-  const [pulseEventsTab, setPulseEventsTab] = useState(false)
-  const [firstLikeMessage, setFirstLikeMessage] = useState<string | null>(null)
+  const [blockUntilEventsTab, setBlockUntilEventsTab] = useState(syncBlockingState)
+  const location = useLocation()
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      try {
+        const path = location.pathname
+        const onMyEvents = path === '/my-events' || path.endsWith('/my-events')
+        if (onMyEvents && localStorage.getItem(FIRST_LIKE_PENDING_OPEN_EVENTS_KEY) === '1') {
+          localStorage.removeItem(FIRST_LIKE_PENDING_OPEN_EVENTS_KEY)
+          localStorage.setItem(FIRST_LIKE_EVENTS_TAB_COMPLETE_KEY, '1')
+        }
+      } catch {
+        /* ignore */
+      }
+      setBlockUntilEventsTab(syncBlockingState())
+    }, 0)
+    return () => window.clearTimeout(id)
+  }, [location.pathname])
 
   const notifyFirstLike = useCallback(() => {
-    if (localStorage.getItem(FIRST_LIKE_EVENTS_TAB_KEY)) return
-    localStorage.setItem(FIRST_LIKE_EVENTS_TAB_KEY, '1')
-    setPulseEventsTab(true)
-    setFirstLikeMessage('See your events in one place')
-    window.setTimeout(() => setPulseEventsTab(false), 5000)
-    window.setTimeout(() => setFirstLikeMessage(null), 6000)
-  }, [])
-
-  const dismissFirstLikeMessage = useCallback(() => {
-    setFirstLikeMessage(null)
+    try {
+      if (localStorage.getItem(FIRST_LIKE_EVENTS_TAB_COMPLETE_KEY) === '1') return
+      if (localStorage.getItem(FIRST_LIKE_PENDING_OPEN_EVENTS_KEY) === '1') {
+        setBlockUntilEventsTab(true)
+        return
+      }
+      localStorage.setItem(FIRST_LIKE_PENDING_OPEN_EVENTS_KEY, '1')
+      setBlockUntilEventsTab(true)
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   const value = useMemo(
     () => ({
-      pulseEventsTab,
-      firstLikeMessage,
+      blockUntilEventsTab,
       notifyFirstLike,
-      dismissFirstLikeMessage,
     }),
-    [pulseEventsTab, firstLikeMessage, notifyFirstLike, dismissFirstLikeMessage],
+    [blockUntilEventsTab, notifyFirstLike],
   )
 
   return <NavigationHintsContext.Provider value={value}>{children}</NavigationHintsContext.Provider>

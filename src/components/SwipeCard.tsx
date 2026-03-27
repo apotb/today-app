@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react'
-import { motion, useAnimation, useMotionValue, useTransform } from 'framer-motion'
+import { motion, useAnimation, useMotionValue, useTransform, type PanInfo } from 'framer-motion'
 import type { EventItem } from '../types/models'
 import { formatDateTime12h } from '../lib/format'
 
 type Props = {
   event: EventItem
   onSwipe: (direction: 'left' | 'right') => Promise<void> | void
+  onOpenDetails?: () => void
   showDesktopNav?: boolean
 }
 
 const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'Free')
 
 const SWIPE_THRESHOLD = 120
+const SWIPE_UP_THRESHOLD = 72
 
-export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
+export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav }: Props) {
   const x = useMotionValue(0)
+  const y = useMotionValue(0)
   const controls = useAnimation()
   const rotate = useTransform(x, [-220, 0, 220], [-10, 0, 10])
   const likeOpacity = useTransform(x, [20, SWIPE_THRESHOLD], [0, 1])
@@ -28,22 +31,35 @@ export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
     const targetRotate = direction === 'right' ? 14 : -14
     await controls.start({
       x: targetX,
+      y: 0,
       rotate: targetRotate,
       opacity: 0,
       transition: { duration: 0.22, ease: 'easeOut' },
     })
     await onSwipe(direction)
     x.set(0)
-    controls.set({ x: 0, rotate: 0, opacity: 1 })
+    y.set(0)
+    controls.set({ x: 0, y: 0, rotate: 0, opacity: 1 })
     setAnimating(false)
   }
 
-  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number } }) => {
-    if (info.offset.x > SWIPE_THRESHOLD) {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const ox = info.offset.x
+    const oy = info.offset.y
+    if (oy < -SWIPE_UP_THRESHOLD && Math.abs(oy) >= Math.abs(ox)) {
+      void Promise.resolve().then(() => {
+        x.set(0)
+        y.set(0)
+        controls.set({ x: 0, y: 0, rotate: 0, opacity: 1 })
+      })
+      onOpenDetails?.()
+      return
+    }
+    if (ox > SWIPE_THRESHOLD) {
       void triggerSwipe('right')
       return
     }
-    if (info.offset.x < -SWIPE_THRESHOLD) {
+    if (ox < -SWIPE_THRESHOLD) {
       void triggerSwipe('left')
     }
   }
@@ -76,10 +92,10 @@ export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
   return (
     <motion.article
       className="swipe-card"
-      style={{ x, rotate }}
-      drag={animating ? false : 'x'}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.9}
+      style={{ x, y, rotate }}
+      drag={animating ? false : true}
+      dragElastic={0.88}
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       onDragEnd={handleDragEnd}
       whileTap={{ cursor: 'grabbing' }}
       initial={{ opacity: 1, scale: 1 }}
@@ -121,8 +137,10 @@ export function SwipeCard({ event, onSwipe, showDesktopNav }: Props) {
           </div>
         ) : null}
         {showDesktopNav ? (
-          <div className="swipe-hint">Use ← / → keys or click arrows</div>
-        ) : null}
+          <div className="swipe-hint">Use ← / → keys or click arrows · Swipe up for details</div>
+        ) : (
+          <div className="swipe-hint swipe-hint-mobile">Swipe up for details</div>
+        )}
       </div>
       <div className="card-body">
         <p className="chip">{event.category}</p>

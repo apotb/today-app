@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import { EventDetailsModal } from '../components/EventDetailsModal'
 import { SwipeCard } from '../components/SwipeCard'
 import { SwipeTutorialOverlay } from '../components/SwipeTutorialOverlay'
 import { useNavigationHints } from '../components/NavigationHintsContext'
@@ -22,7 +23,13 @@ export function HomePage() {
   const [tutorialDismissed, setTutorialDismissed] = useState(
     () => localStorage.getItem(TUTORIAL_SWIPE_KEY) === '1',
   )
+  const [detailEvent, setDetailEvent] = useState<EventItem | null>(null)
   const isDesktop = useIsDesktop()
+
+  useEffect(() => {
+    document.documentElement.classList.add('page-home')
+    return () => document.documentElement.classList.remove('page-home')
+  }, [])
   const loadEvents = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -106,7 +113,12 @@ export function HomePage() {
       ) : null}
       {showTutorial ? <SwipeTutorialOverlay onComplete={completeTutorial} /> : null}
       {!showTutorial && current ? (
-        <SwipeCard event={current} onSwipe={swipe} showDesktopNav={isDesktop} />
+        <SwipeCard
+          event={current}
+          onSwipe={swipe}
+          onOpenDetails={() => setDetailEvent(current)}
+          showDesktopNav={isDesktop}
+        />
       ) : null}
       {!showTutorial && !current ? (
         <section className="panel">
@@ -115,6 +127,9 @@ export function HomePage() {
             Refresh
           </button>
         </section>
+      ) : null}
+      {detailEvent ? (
+        <EventDetailsModal event={detailEvent} onClose={() => setDetailEvent(null)} />
       ) : null}
     </div>
   )

@@ -47,6 +47,7 @@ export type EventItem = {
   category: EventCategory
   location: string
   address?: string | null
+  source_url?: string | null
   attendance_status?: 'attended' | 'missed' | null
   score?: number
 }

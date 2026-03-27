@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import { NavigationHintsProvider, useNavigationHints } from './NavigationHintsContext'
@@ -76,42 +77,73 @@ function bottomNavClass({ isActive }: { isActive: boolean }) {
   return ['bottom-nav-link', isActive ? 'active' : ''].filter(Boolean).join(' ')
 }
 
+function NavDummy({ children }: { children: ReactNode }) {
+  return (
+    <span className="bottom-nav-link bottom-nav-link-disabled" aria-disabled="true" role="link">
+      {children}
+    </span>
+  )
+}
+
 function LayoutShell() {
-  const { pulseEventsTab, firstLikeMessage, dismissFirstLikeMessage } = useNavigationHints()
+  const { blockUntilEventsTab } = useNavigationHints()
 
   return (
     <div className="app-shell">
       <header className="app-top-brand">
-        <Link to="/" className="brand">
-          <img src={logo} alt="" width={38} height={38} />
-          <span>Today</span>
-        </Link>
+        {blockUntilEventsTab ? (
+          <span className="brand brand-disabled" aria-disabled="true">
+            <img src={logo} alt="" width={38} height={38} />
+            <span>Today</span>
+          </span>
+        ) : (
+          <Link to="/" className="brand">
+            <img src={logo} alt="" width={38} height={38} />
+            <span>Today</span>
+          </Link>
+        )}
       </header>
-      <main className="app-main">
-        <Outlet />
-      </main>
-      {firstLikeMessage ? (
-        <div className="nav-hint-toast" role="status">
-          <span>{firstLikeMessage}</span>
-          <button
-            type="button"
-            className="nav-hint-dismiss"
-            onClick={dismissFirstLikeMessage}
-            aria-label="Dismiss"
+      <div className="app-main-wrap">
+        <main className="app-main">
+          <Outlet />
+        </main>
+        {blockUntilEventsTab ? (
+          <div
+            className="first-like-blocker"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="first-like-title"
           >
-            ×
-          </button>
-        </div>
-      ) : null}
+            <div className="first-like-blocker-card">
+              <p id="first-like-title" className="first-like-blocker-title">
+                See your events in one place
+              </p>
+              <p className="first-like-blocker-hint">
+                Tap <strong>Events</strong> in the bar below to continue.
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </div>
       <nav className="bottom-nav" aria-label="Main navigation">
-        <NavLink to="/" end className={bottomNavClass}>
-          <IconHome />
-          <span>Home</span>
-        </NavLink>
+        {blockUntilEventsTab ? (
+          <NavDummy>
+            <IconHome />
+            <span>Home</span>
+          </NavDummy>
+        ) : (
+          <NavLink to="/" end className={bottomNavClass}>
+            <IconHome />
+            <span>Home</span>
+          </NavLink>
+        )}
         <NavLink
           to="/my-events"
           className={({ isActive }) =>
-            [bottomNavClass({ isActive }), pulseEventsTab ? 'bottom-nav-pulse' : '']
+            [
+              bottomNavClass({ isActive }),
+              blockUntilEventsTab ? 'bottom-nav-events-spotlight' : '',
+            ]
               .filter(Boolean)
               .join(' ')
           }
@@ -119,10 +151,17 @@ function LayoutShell() {
           <IconCalendar />
           <span>Events</span>
         </NavLink>
-        <NavLink to="/settings" className={bottomNavClass}>
-          <IconSettings />
-          <span>Settings</span>
-        </NavLink>
+        {blockUntilEventsTab ? (
+          <NavDummy>
+            <IconSettings />
+            <span>Settings</span>
+          </NavDummy>
+        ) : (
+          <NavLink to="/settings" className={bottomNavClass}>
+            <IconSettings />
+            <span>Settings</span>
+          </NavLink>
+        )}
       </nav>
     </div>
   )

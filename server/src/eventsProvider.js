@@ -103,11 +103,24 @@ const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles
     endDateTime: end.toISOString().replace(/\.\d{3}Z$/, 'Z'),
   })
 
-  if (location.zip) params.set('postalCode', location.zip)
-  if (location.latitude && location.longitude) {
+  const hasCoords =
+    location.latitude != null &&
+    location.longitude != null &&
+    Number.isFinite(Number(location.latitude)) &&
+    Number.isFinite(Number(location.longitude))
+
+  if (hasCoords) {
     params.set('latlong', `${location.latitude},${location.longitude}`)
     params.set('radius', `${radius}`)
     params.set('unit', unit === 'km' ? 'km' : 'miles')
+  } else if (location.zip) {
+    const zip = `${location.zip}`.trim()
+    params.set('postalCode', zip)
+    params.set('radius', `${radius}`)
+    params.set('unit', unit === 'km' ? 'km' : 'miles')
+    if (/^\d{5}(-\d{4})?$/.test(zip)) {
+      params.set('countryCode', 'US')
+    }
   }
 
   try {
