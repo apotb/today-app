@@ -4,6 +4,8 @@ import cors from 'cors'
 import { z } from 'zod'
 import { all, get, initDb, run } from './db.js'
 import { fetchExternalEvents } from './eventsProvider.js'
+import { CATEGORY_TAGS } from './categoryTags.js'
+import { haversineMiles, toMiles } from './geo.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 4000
@@ -11,33 +13,9 @@ const port = Number(process.env.PORT) || 4000
 app.use(cors())
 app.use(express.json())
 
-const categories = [
-  'sports-fitness',
-  'arts-culture',
-  'music-nightlife',
-  'food-drink',
-  'volunteering-community',
-  'social-meetups',
-  'dating-singles',
-  'family-friendly',
-  'outdoor-nature',
-  'wellness-self-care',
-  'learning-workshops',
-  'networking-professional',
-  'entrepreneurship-startups',
-  'finance-business',
-  'gaming-esports',
-  'tech-ai',
-  'film-media',
-  'fashion-popups',
-  'comedy-improv',
-  'festivals-fairs',
-  'holidays-seasonal',
-  'markets',
-  'religious-spiritual',
-  'activism-politics',
-  'travel-exploration',
-]
+// Single source of truth for category ids on the server (must match CATEGORY_OPTIONS in
+// src/types/models.ts on the frontend).
+const categories = Object.keys(CATEGORY_TAGS)
 
 const preferenceSchema = z.object({
   sessionId: z.string().min(1),
@@ -87,7 +65,18 @@ const syncSchema = z.object({
   location: locationSchema.optional(),
   radius: z.number().positive().max(200).optional(),
   unit: z.enum(['miles', 'km']).optional(),
+  force: z.boolean().optional(),
 })
+
+/** How long a synced area's events are reused before the providers are called again. */
+const SYNC_FRESH_MS = 30 * 60 * 1000
+
+/**
+ * Identifies a synced area. Coordinates are rounded to 2 decimals (~1 km), so
+ * nearby users and small GPS jitter share the same cached sync.
+ */
+const syncAreaKey = (latitude, longitude, radius, unit) =>
+  `${Number(latitude).toFixed(2)},${Number(longitude).toFixed(2)}|${radius}${unit}`
 
 /** Discover / sync / providers: now → 48h ahead */
 const FEED_WINDOW_MS = 48 * 60 * 60 * 1000
@@ -105,18 +94,20 @@ const getMyEventsFetchWindow = () => {
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
-const haversineMiles = (lat1, lon1, lat2, lon2) => {
-  if ([lat1, lon1, lat2, lon2].some((v) => v == null || Number.isNaN(Number(v)))) return null
-  const R = 3958.8
-  const toRad = (d) => (Number(d) * Math.PI) / 180
-  const dLat = toRad(lat2 - lat1)
-  const dLon = toRad(lon2 - lon1)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
+/**
+ * Removes external events that have already ended and that no user has swiped on
+ * or marked attendance for. Events with interactions are kept so My Events never
+ * loses saved events and swipe history keeps counting toward recommendations.
+ */
+const pruneEndedEvents = () =>
+  run(
+    `DELETE FROM events
+     WHERE ends_at < ?
+       AND id NOT LIKE 'seed-%'
+       AND id NOT IN (SELECT event_id FROM user_interactions)
+       AND id NOT IN (SELECT event_id FROM user_event_attendance)`,
+    [new Date().toISOString()],
+  )
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
@@ -125,8 +116,6 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/debug/providers', (_req, res) => {
   res.json({
     ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
-    eventbriteConfigured: Boolean(process.env.EVENTBRITE_API_TOKEN),
-    googlePlacesConfigured: Boolean(process.env.GOOGLE_PLACES_API_KEY),
   })
 })
 
@@ -243,6 +232,20 @@ app.post('/api/interactions', async (req, res, next) => {
   }
 })
 
+/** Undo a swipe: removes that like/dislike so the event returns to the feed. */
+app.post('/api/interactions/undo', async (req, res, next) => {
+  try {
+    const parsed = interactionSchema.parse(req.body)
+    const result = await run(
+      `DELETE FROM user_interactions WHERE session_id = ? AND event_id = ? AND action = ?`,
+      [parsed.sessionId, parsed.eventId, parsed.action],
+    )
+    res.json({ success: true, removed: result.changes })
+  } catch (error) {
+    next(error)
+  }
+})
+
 app.post('/api/events/sync', async (req, res, next) => {
   try {
     const parsed = syncSchema.parse(req.body ?? {})
@@ -260,12 +263,24 @@ app.post('/api/events/sync', async (req, res, next) => {
       return
     }
 
+    const areaKey = syncAreaKey(location.latitude, location.longitude, radius, unit)
+    if (!parsed.force) {
+      const lastSync = await get('SELECT synced_at FROM sync_areas WHERE area_key = ?', [areaKey])
+      const ageMs = lastSync ? Date.now() - new Date(lastSync.synced_at).getTime() : Infinity
+      if (ageMs < SYNC_FRESH_MS) {
+        res.json({ success: true, imported: 0, cached: true })
+        return
+      }
+    }
+
     const fetchedEvents = await fetchExternalEvents({
       location,
       radius,
       unit,
     })
-    await run(`DELETE FROM events WHERE id LIKE 'evt_%' OR id LIKE 'tm_%' OR id LIKE 'eb_%' OR id LIKE 'gp_%'`)
+    // Shared events table: never wipe other users' events here. Upsert this area's
+    // events and only prune ones that have already ended and nobody saved.
+    await pruneEndedEvents()
     for (const event of fetchedEvents) {
       await run(
         `INSERT INTO events (
@@ -306,13 +321,21 @@ app.post('/api/events/sync', async (req, res, next) => {
         ],
       )
     }
+    // Providers swallow their own errors and return [], so an empty result might be a
+    // failure. Only remember the sync when it actually returned events.
+    if (fetchedEvents.length > 0) {
+      await run(
+        `INSERT INTO sync_areas (area_key, synced_at) VALUES (?, ?)
+         ON CONFLICT(area_key) DO UPDATE SET synced_at = excluded.synced_at`,
+        [areaKey, new Date().toISOString()],
+      )
+    }
     res.json({
       success: true,
+      cached: false,
       imported: fetchedEvents.length,
       providers: {
         ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
-        eventbriteConfigured: Boolean(process.env.EVENTBRITE_API_TOKEN),
-        googlePlacesConfigured: Boolean(process.env.GOOGLE_PLACES_API_KEY),
       },
     })
   } catch (error) {
@@ -328,8 +351,19 @@ app.get('/api/events/discover', async (req, res, next) => {
       return
     }
 
-    const userLat = req.query.latitude != null ? Number(req.query.latitude) : null
-    const userLon = req.query.longitude != null ? Number(req.query.longitude) : null
+    const parseCoord = (v) => {
+      if (v == null || v === '') return null
+      const n = Number(v)
+      return Number.isFinite(n) ? n : null
+    }
+    const userLat = parseCoord(req.query.latitude)
+    const userLon = parseCoord(req.query.longitude)
+    const hasUserLocation = userLat != null && userLon != null
+    const requestedRadius = Number(req.query.radius)
+    const radius =
+      Number.isFinite(requestedRadius) && requestedRadius > 0 ? Math.min(requestedRadius, 200) : 25
+    const unit = req.query.unit === 'km' ? 'km' : 'miles'
+    const radiusMiles = toMiles(radius, unit)
 
     const { from, to } = getWindow()
     const events = await all(
@@ -390,7 +424,8 @@ app.get('/api/events/discover', async (req, res, next) => {
     for (const row of historical) {
       const current = scoreByCategory.get(row.category) ?? 0
       if (row.action === 'like') scoreByCategory.set(row.category, current + row.count * 2)
-      if (row.action === 'attended') scoreByCategory.set(row.category, current + row.count * 3)
+      // 'attended' is also written to user_event_attendance, which is scored below.
+      // Counting it here too would double its weight.
       if (row.action === 'dislike') scoreByCategory.set(row.category, current - row.count * 2)
     }
 
@@ -408,7 +443,30 @@ app.get('/api/events/discover', async (req, res, next) => {
       if (row.status === 'missed') scoreByCategory.set(row.category, current - row.count)
     }
 
-    const enriched = events.map((event) => {
+    // The events table holds every user's area, so only keep events near this user.
+    // Events without coordinates can't be placed, so they're only shown when the
+    // request has no location (or they're the built-in sample events).
+    const isNearUser = (event) => {
+      if (!hasUserLocation) return true
+      const d = haversineMiles(userLat, userLon, event.latitude, event.longitude)
+      return d != null && d <= radiusMiles
+    }
+
+    // Sample events are only a fallback: show them only when this area has no real
+    // events at all in the window. Swiped events still count as real, so swiping
+    // through every real event doesn't bring the samples back.
+    const realEventsInWindow = await all(
+      `SELECT latitude, longitude FROM events
+       WHERE starts_at BETWEEN ? AND ? AND id LIKE 'evt_%'`,
+      [from, to],
+    )
+    const areaHasRealEvents = realEventsInWindow.some(isNearUser)
+
+    const nearby = events.filter((event) =>
+      event.id.startsWith('seed-') ? !areaHasRealEvents : isNearUser(event),
+    )
+
+    const enriched = nearby.map((event) => {
       let eventTags = []
       try {
         eventTags = JSON.parse(event.tags || '[]')
@@ -492,28 +550,23 @@ app.get('/api/my-events', async (req, res, next) => {
       return
     }
     const { from, to } = getMyEventsFetchWindow()
+    // One query: saved events plus this user's attendance status (previously one extra
+    // query per event).
     const events = await all(
-      `SELECT DISTINCT e.*
-       FROM user_interactions ui
-       JOIN events e ON e.id = ui.event_id
-       WHERE ui.session_id = ?
-         AND ui.action IN ('like', 'attended')
+      `SELECT e.*, a.status AS attendance_status
+       FROM events e
+       LEFT JOIN user_event_attendance a
+         ON a.event_id = e.id AND a.session_id = ?
+       WHERE e.id IN (
+           SELECT event_id FROM user_interactions
+           WHERE session_id = ? AND action IN ('like', 'attended')
+         )
          AND (e.id LIKE 'evt_%' OR e.id LIKE 'seed-%')
          AND e.starts_at BETWEEN ? AND ?
        ORDER BY e.starts_at ASC`,
-      [sessionId, from, to],
+      [sessionId, sessionId, from, to],
     )
-    const withAttendance = await Promise.all(
-      events.map(async (event) => {
-        const attendance = await get(
-          `SELECT status FROM user_event_attendance
-           WHERE session_id = ? AND event_id = ?`,
-          [sessionId, event.id],
-        )
-        return { ...event, attendance_status: attendance?.status ?? null }
-      }),
-    )
-    res.json({ events: withAttendance })
+    res.json({ events })
   } catch (error) {
     next(error)
   }

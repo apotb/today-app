@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { fetchEventbriteEvents } from './eventbriteProvider.js'
-import { fetchGooglePlacesEvents } from './googlePlacesEvents.js'
 import { aggregateAndDedupeEvents } from './eventAggregation.js'
 import {
   pickBestTicketmasterImage,
@@ -69,6 +67,7 @@ const normalizeTicketmasterEvent = (event) => {
     description: professionalizeDescription(info),
     startsAt: start,
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
+    // Missing Ticketmaster prices stay null so the UI does not show them as free.
     cost: ticketmasterCostFromApi(event),
     imageUrl: image ?? null,
     category: mapCategory(categoryRaw),
@@ -158,13 +157,11 @@ export const fetchExternalEvents = async (options = {}) => {
     return []
   }
 
-  const [ticketmaster, eventbrite, googlePlaces] = await Promise.all([
-    fetchTicketmasterEvents(location, radius, unit),
-    fetchEventbriteEvents({ location, radius, unit }),
-    fetchGooglePlacesEvents({ location, radius, unit }),
-  ])
+  // Ticketmaster is currently the only source. Add new providers here; results are
+  // merged and deduplicated across sources by aggregateAndDedupeEvents.
+  const ticketmaster = await fetchTicketmasterEvents(location, radius, unit)
 
-  let merged = uniqEvents([...ticketmaster, ...eventbrite, ...googlePlaces])
+  let merged = uniqEvents([...ticketmaster])
   if (merged.length === 0) {
     return []
   }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import type { EventItem } from '../types/models'
-import { formatDateTime12h } from '../lib/format'
-import { formatEventPrice } from '../lib/formatEventPrice'
+import { formatDateTime12h, formatPrice } from '../lib/format'
+import { categoryLabel } from '../lib/eventActions'
 
 const DEMO_EVENT: EventItem = {
   id: 'tutorial-demo',
@@ -10,7 +10,7 @@ const DEMO_EVENT: EventItem = {
   description: 'This is just a sample — your real picks are next.',
   starts_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
   ends_at: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-  cost: null,
+  cost: 0,
   image_url: 'https://picsum.photos/seed/today-tutorial-swipe/1200/675',
   category: 'music-nightlife',
   location: 'Downtown venue',
@@ -96,11 +96,11 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
             <div className="image-gradient" />
           </div>
           <div className="card-body">
-            <p className="chip">{DEMO_EVENT.category}</p>
+            <p className="chip">{categoryLabel(DEMO_EVENT.category)}</p>
             <h2 className="card-title">{DEMO_EVENT.title}</h2>
             <p>{formatDateTime12h(DEMO_EVENT.starts_at)}</p>
             <p>{DEMO_EVENT.location}</p>
-            <p>{formatEventPrice(DEMO_EVENT.cost)}</p>
+            <p>{formatPrice(DEMO_EVENT.cost)}</p>
             <p className="description description-preview">{DEMO_EVENT.description}</p>
           </div>
         </motion.article>

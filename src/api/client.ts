@@ -62,25 +62,26 @@ export const api = {
       body: JSON.stringify({ sessionId, answers }),
     }),
 
-  importLocalEvents: (location: string) =>
-    request<{ success: boolean; imported: number }>('/events/import-local', {
-      method: 'POST',
-      body: JSON.stringify({ location }),
-    }),
-
   syncEvents: (
     sessionId: string,
     location: StoredLocation | null,
     radius: number,
     unit: DistanceUnit,
+    /** Skip the server's 30-minute cache and call the event providers again. */
+    force = false,
   ) =>
-    request<{ success: boolean; imported: number }>('/events/sync', {
+    request<{ success: boolean; imported: number; cached?: boolean }>('/events/sync', {
       method: 'POST',
-      body: JSON.stringify({ sessionId, location: location ?? {}, radius, unit }),
+      body: JSON.stringify({ sessionId, location: location ?? {}, radius, unit, force }),
     }),
 
-  discoverEvents: (sessionId: string, location: StoredLocation | null) => {
-    const params = new URLSearchParams({ sessionId })
+  discoverEvents: (
+    sessionId: string,
+    location: StoredLocation | null,
+    radius: number,
+    unit: DistanceUnit,
+  ) => {
+    const params = new URLSearchParams({ sessionId, radius: String(radius), unit })
     if (location?.latitude != null) params.set('latitude', String(location.latitude))
     if (location?.longitude != null) params.set('longitude', String(location.longitude))
     return request<{ events: EventItem[] }>(`/events/discover?${params.toString()}`)
@@ -96,7 +97,13 @@ export const api = {
       body: JSON.stringify({ sessionId, eventId, action }),
     }),
 
-  setAttendance: (sessionId: string, eventId: string, status: 'attended' | 'missed') =>
+  undoInteraction: (sessionId: string, eventId: string, action: 'like' | 'dislike') =>
+    request<{ success: boolean; removed: number }>('/interactions/undo', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, eventId, action }),
+    }),
+
+  setAttendance:(sessionId: string, eventId: string, status: 'attended' | 'missed') =>
     request<{ success: boolean }>('/attendance', {
       method: 'POST',
       body: JSON.stringify({ sessionId, eventId, status }),

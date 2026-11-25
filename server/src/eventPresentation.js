@@ -127,31 +127,3 @@ export function pickBestTicketmasterImage(images) {
   scored.sort((a, b) => b.score - a.score)
   return scored[0].url
 }
-
-export function eventbriteCostFromApi(event) {
-  if (event?.is_free === true) return 0
-  const minP = event?.ticket_availability?.minimum_ticket_price
-  if (minP?.major_value != null) {
-    const n = Number(minP.major_value)
-    if (Number.isFinite(n) && n >= 0) return n > 0 ? n : null
-  }
-  if (minP?.value != null) {
-    const n = Number(minP.value)
-    if (Number.isFinite(n) && n > 0) return n >= 100 ? n / 100 : n
-  }
-  return null
-}
-
-export function pickBestGooglePhoto(photos) {
-  if (!Array.isArray(photos) || photos.length === 0) return null
-  let best = photos[0]
-  let bestW = Number(best.width) || 0
-  for (const p of photos) {
-    const w = Number(p.width) || 0
-    if (w > bestW) {
-      best = p
-      bestW = w
-    }
-  }
-  return best?.photo_reference ?? null
-}

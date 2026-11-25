@@ -485,7 +485,6 @@ button.tutorial-dismiss {
   padding: 6px 10px;
   border-radius: 999px;
   margin: 0 0 8px;
-  text-transform: capitalize;
   font-weight: 600;
   font-size: 0.9rem;
 }
@@ -585,6 +584,69 @@ button.tutorial-dismiss {
   line-height: 1.3;
 }
 
+/* Inline "Undo" link in the hint line under the vibe chips */
+.home-undo-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: #007400;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.home-undo-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Vibe filter chips above the swipe deck: one row, scrolls sideways when it overflows */
+.vibe-chips {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 10px;
+  margin: 0 -4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* Fade the right edge so it's clear more chips scroll into view */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+.vibe-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.vibe-chip {
+  flex-shrink: 0;
+  border: 1.5px solid #cfe7cf;
+  background: #fff;
+  color: #10213f;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.vibe-chip.active {
+  background: #00b100;
+  border-color: #00b100;
+  color: #fff;
+}
+
+.vibe-chip-clear {
+  background: transparent;
+  border-color: transparent;
+  color: #506080;
+  text-decoration: underline;
+}
+
 .home-deck {
   flex: 1;
   min-height: 0;
@@ -600,12 +662,14 @@ button.tutorial-dismiss {
   max-width: none;
   display: flex;
   flex-direction: column;
-  max-height: calc(100dvh - var(--app-chrome-top) - var(--app-chrome-bottom) - 140px);
+  /* No fixed max-height: the flex layout already sizes the card to the space left
+     between the chips and the bottom nav, on any screen. */
 }
 
 .home-deck-card .card-image-wrap {
-  flex: 1 1 auto;
-  min-height: 180px;
+  /* The image grows and shrinks to fit; the text below never gets cut off */
+  flex: 1 1 0;
+  min-height: 96px;
   max-height: 52dvh;
   position: relative;
 }
@@ -613,7 +677,7 @@ button.tutorial-dismiss {
 .home-deck-card .card-image {
   height: 100%;
   width: 100%;
-  min-height: 200px;
+  min-height: 0;
   object-fit: cover;
   display: block;
 }

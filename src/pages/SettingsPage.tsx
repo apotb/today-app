@@ -53,7 +53,7 @@ export function SettingsPage() {
     setError('')
     try {
       const settings = getStoredDiscoverySettings()
-      await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit)
+      await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit, true)
       dispatchFeedRefresh()
       setMessage('Event feed refreshed. Open Home to see updates.')
     } catch (e) {
