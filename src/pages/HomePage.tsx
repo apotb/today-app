@@ -188,7 +188,7 @@ export function HomePage() {
                 onClick={() => void undoLastSwipe()}
                 disabled={undoing}
               >
-                ↶ Undo {lastSwipe.action === 'like' ? 'like' : 'skip'}
+                ↩ Undo {lastSwipe.action === 'like' ? 'like' : 'skip'}
               </button>
             </>
           ) : null}
