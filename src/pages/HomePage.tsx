@@ -41,7 +41,12 @@ export function HomePage() {
         throw new Error('Location needed. Open Settings and allow location.')
       }
       await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit)
-      const { events: list } = await api.discoverEvents(getSessionId(), loc)
+      const { events: list } = await api.discoverEvents(
+        getSessionId(),
+        loc,
+        settings.radius,
+        settings.unit,
+      )
       setEvents(list)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load events.')

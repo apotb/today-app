@@ -105,6 +105,25 @@ const getMyEventsFetchWindow = () => {
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
+const KM_PER_MILE = 1.609344
+
+const toMiles = (radius, unit) => (unit === 'km' ? radius / KM_PER_MILE : radius)
+
+/**
+ * Removes external events that have already ended and that no user has swiped on
+ * or marked attendance for. Events with interactions are kept so My Events never
+ * loses saved events and swipe history keeps counting toward recommendations.
+ */
+const pruneEndedEvents = () =>
+  run(
+    `DELETE FROM events
+     WHERE ends_at < ?
+       AND id NOT LIKE 'seed-%'
+       AND id NOT IN (SELECT event_id FROM user_interactions)
+       AND id NOT IN (SELECT event_id FROM user_event_attendance)`,
+    [new Date().toISOString()],
+  )
+
 const haversineMiles = (lat1, lon1, lat2, lon2) => {
   if ([lat1, lon1, lat2, lon2].some((v) => v == null || Number.isNaN(Number(v)))) return null
   const R = 3958.8
@@ -265,7 +284,9 @@ app.post('/api/events/sync', async (req, res, next) => {
       radius,
       unit,
     })
-    await run(`DELETE FROM events WHERE id LIKE 'evt_%' OR id LIKE 'tm_%' OR id LIKE 'eb_%' OR id LIKE 'gp_%'`)
+    // Shared events table: never wipe other users' events here. Upsert this area's
+    // events and only prune ones that have already ended and nobody saved.
+    await pruneEndedEvents()
     for (const event of fetchedEvents) {
       await run(
         `INSERT INTO events (
@@ -328,8 +349,19 @@ app.get('/api/events/discover', async (req, res, next) => {
       return
     }
 
-    const userLat = req.query.latitude != null ? Number(req.query.latitude) : null
-    const userLon = req.query.longitude != null ? Number(req.query.longitude) : null
+    const parseCoord = (v) => {
+      if (v == null || v === '') return null
+      const n = Number(v)
+      return Number.isFinite(n) ? n : null
+    }
+    const userLat = parseCoord(req.query.latitude)
+    const userLon = parseCoord(req.query.longitude)
+    const hasUserLocation = userLat != null && userLon != null
+    const requestedRadius = Number(req.query.radius)
+    const radius =
+      Number.isFinite(requestedRadius) && requestedRadius > 0 ? Math.min(requestedRadius, 200) : 25
+    const unit = req.query.unit === 'km' ? 'km' : 'miles'
+    const radiusMiles = toMiles(radius, unit)
 
     const { from, to } = getWindow()
     const events = await all(
@@ -408,7 +440,17 @@ app.get('/api/events/discover', async (req, res, next) => {
       if (row.status === 'missed') scoreByCategory.set(row.category, current - row.count)
     }
 
-    const enriched = events.map((event) => {
+    // The events table holds every user's area, so only keep events near this user.
+    // Events without coordinates can't be placed, so they're only shown when the
+    // request has no location (or they're the built-in sample events).
+    const nearby = events.filter((event) => {
+      if (!hasUserLocation) return true
+      if (event.id.startsWith('seed-')) return true
+      const d = haversineMiles(userLat, userLon, event.latitude, event.longitude)
+      return d != null && d <= radiusMiles
+    })
+
+    const enriched = nearby.map((event) => {
       let eventTags = []
       try {
         eventTags = JSON.parse(event.tags || '[]')

@@ -79,8 +79,13 @@ export const api = {
       body: JSON.stringify({ sessionId, location: location ?? {}, radius, unit }),
     }),
 
-  discoverEvents: (sessionId: string, location: StoredLocation | null) => {
-    const params = new URLSearchParams({ sessionId })
+  discoverEvents: (
+    sessionId: string,
+    location: StoredLocation | null,
+    radius: number,
+    unit: DistanceUnit,
+  ) => {
+    const params = new URLSearchParams({ sessionId, radius: String(radius), unit })
     if (location?.latitude != null) params.set('latitude', String(location.latitude))
     if (location?.longitude != null) params.set('longitude', String(location.longitude))
     return request<{ events: EventItem[] }>(`/events/discover?${params.toString()}`)
