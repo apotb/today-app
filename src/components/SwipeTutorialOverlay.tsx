@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import type { EventItem } from '../types/models'
-import { formatDateTime12h } from '../lib/format'
+import { formatDateTime12h, formatPrice } from '../lib/format'
 
 const DEMO_EVENT: EventItem = {
   id: 'tutorial-demo',
@@ -9,7 +9,7 @@ const DEMO_EVENT: EventItem = {
   description: 'This is just a sample — your real picks are next.',
   starts_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
   ends_at: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-  cost: null,
+  cost: 0,
   image_url: 'https://picsum.photos/seed/today-tutorial-swipe/1200/675',
   category: 'music-nightlife',
   location: 'Downtown venue',
@@ -62,8 +62,6 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
       cancelled.current = true
     }
   }, [controls])
-
-  const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'Free')
 
   return (
     <div

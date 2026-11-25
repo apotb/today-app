@@ -75,7 +75,9 @@ const normalizeTicketmasterEvent = (event) => {
     description: cleanDescription(event.info ?? event.pleaseNote ?? ''),
     startsAt: start,
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
-    cost: event?.priceRanges?.[0]?.min ?? 0,
+    // Many Ticketmaster events have no priceRanges. Store null (unknown) rather than 0,
+    // which the app would show as "Free".
+    cost: Number.isFinite(event?.priceRanges?.[0]?.min) ? event.priceRanges[0].min : null,
     imageUrl: image ?? null,
     category: mapCategory(categoryRaw),
     location: venue?.name ?? 'Local Venue',

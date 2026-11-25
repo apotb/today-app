@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion, useAnimation, useMotionValue, useTransform, type PanInfo } from 'framer-motion'
 import type { EventItem } from '../types/models'
-import { formatDateTime12h } from '../lib/format'
+import { formatDateTime12h, formatPrice } from '../lib/format'
 
 type Props = {
   event: EventItem
@@ -11,8 +11,6 @@ type Props = {
   /** Fills viewport height on Home (mobile deck layout). */
   deckLayout?: boolean
 }
-
-const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'Free')
 
 const SWIPE_THRESHOLD = 120
 const SWIPE_UP_THRESHOLD = 72
