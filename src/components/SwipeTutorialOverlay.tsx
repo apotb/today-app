@@ -82,13 +82,10 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
       className="tutorial-overlay"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="tutorial-title"
+      aria-label="Swipe tutorial"
     >
       <div className="tutorial-backdrop" aria-hidden="true" />
       <div className="tutorial-content">
-        <p id="tutorial-title" className="tutorial-heading">
-          How swiping works
-        </p>
         <motion.article
           className="swipe-card tutorial-demo-card"
           initial={{ x: 0, y: 0, rotate: 0 }}
