@@ -44,16 +44,25 @@ const get = (sql, params = []) => {
   }
 }
 
-const now = Date.now()
-const inHours = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString()
+/**
+ * Sample events happen at realistic times of day: the next time the clock reaches
+ * `hour:minute` (server local time), at least 30 minutes from now, so a "night tour"
+ * isn't scheduled for 3 AM. Returns { startsAt, endsAt } as ISO strings.
+ */
+const nextAt = (hour, minute, durationHours) => {
+  const start = new Date()
+  start.setHours(hour, minute, 0, 0)
+  if (start.getTime() < Date.now() + 30 * 60 * 1000) start.setDate(start.getDate() + 1)
+  const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000)
+  return { startsAt: start.toISOString(), endsAt: end.toISOString() }
+}
 
 const seedEvents = [
   {
     id: 'seed-sunrise-harbor-run',
     title: 'Sunrise Harbor Run',
     description: 'Join a community-paced 5K run along the waterfront.',
-    startsAt: inHours(2),
-    endsAt: inHours(4),
+    ...nextAt(8, 0, 2),
     cost: 0,
     imageUrl: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=900&q=80',
     category: 'sports-fitness',
@@ -64,8 +73,7 @@ const seedEvents = [
     id: 'seed-downtown-jazz-night',
     title: 'Downtown Jazz Night',
     description: 'Enjoy live local jazz artists with open seating.',
-    startsAt: inHours(6),
-    endsAt: inHours(9),
+    ...nextAt(20, 0, 3),
     cost: 15,
     imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900&q=80',
     category: 'music-nightlife',
@@ -76,8 +84,7 @@ const seedEvents = [
     id: 'seed-neighborhood-cleanup',
     title: 'Neighborhood Trail Cleanup',
     description: 'Join a volunteer team to help clean nearby city trails.',
-    startsAt: inHours(8),
-    endsAt: inHours(10),
+    ...nextAt(10, 0, 2),
     cost: 0,
     imageUrl: 'https://images.unsplash.com/photo-1593113630400-ea4288922497?w=900&q=80',
     category: 'volunteering-community',
@@ -88,8 +95,7 @@ const seedEvents = [
     id: 'seed-city-museum-tour',
     title: 'City Museum Night Tour',
     description: 'Take an after-hours guided tour through rotating exhibits.',
-    startsAt: inHours(12),
-    endsAt: inHours(14),
+    ...nextAt(19, 0, 2),
     cost: 22,
     imageUrl: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=900&q=80',
     category: 'arts-culture',
@@ -100,8 +106,7 @@ const seedEvents = [
     id: 'seed-street-food-social',
     title: 'Street Food Social',
     description: 'Explore pop-up food stalls and local live performers.',
-    startsAt: inHours(20),
-    endsAt: inHours(23),
+    ...nextAt(17, 30, 3),
     cost: 8,
     imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=900&q=80',
     category: 'food-drink',
@@ -112,8 +117,7 @@ const seedEvents = [
     id: 'seed-startup-pitch-practice',
     title: 'Startup Pitch Practice Session',
     description: 'Practice short pitches and get peer feedback in a friendly setting.',
-    startsAt: inHours(16),
-    endsAt: inHours(19),
+    ...nextAt(18, 30, 2),
     cost: 0,
     imageUrl: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?w=900&q=80',
     category: 'entrepreneurship-startups',
