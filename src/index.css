@@ -662,13 +662,14 @@ button.tutorial-dismiss {
   max-width: none;
   display: flex;
   flex-direction: column;
-  /* 180px = title, hint and vibe chip row above the card */
-  max-height: calc(100dvh - var(--app-chrome-top) - var(--app-chrome-bottom) - 180px);
+  /* No fixed max-height: the flex layout already sizes the card to the space left
+     between the chips and the bottom nav, on any screen. */
 }
 
 .home-deck-card .card-image-wrap {
-  flex: 1 1 auto;
-  min-height: 180px;
+  /* The image grows and shrinks to fit; the text below never gets cut off */
+  flex: 1 1 0;
+  min-height: 96px;
   max-height: 52dvh;
   position: relative;
 }
@@ -676,7 +677,7 @@ button.tutorial-dismiss {
 .home-deck-card .card-image {
   height: 100%;
   width: 100%;
-  min-height: 200px;
+  min-height: 0;
   object-fit: cover;
   display: block;
 }
