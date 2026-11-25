@@ -1,0 +1,41 @@
+# Runs on every pull request into main (and on pushes to main):
+#   npm run lint   - ESLint, catches code mistakes and bad patterns
+#   npm run build  - TypeScript check + Vite production build, same as Vercel
+# The result shows as a check (green or red) on the pull request.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A newer push to the same branch cancels the run that's still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-build:
+    name: Lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches package.json engines (>=22.13) and Render's NODE_VERSION.
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
