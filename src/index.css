@@ -392,8 +392,11 @@ button.tutorial-dismiss {
   border: 1px solid rgba(228, 232, 241, 0.9);
   background: rgba(255, 255, 255, 0.9);
   color: #10213f;
+  font-family: inherit;
   font-size: 28px;
   line-height: 1;
+  appearance: none;
+  padding: 0;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -401,6 +404,13 @@ button.tutorial-dismiss {
   backdrop-filter: blur(8px);
   transition: transform 120ms ease, background 120ms ease, opacity 120ms ease;
   opacity: 0.92;
+}
+
+.image-nav-glyph {
+  display: block;
+  line-height: 1;
+  /* ‹ › sit about 0.1em below the em-box center in the system UI font. */
+  transform: translateY(-0.1em);
 }
 
 .image-nav-btn:hover {

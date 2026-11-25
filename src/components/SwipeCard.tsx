@@ -162,7 +162,9 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
               title="Dislike (←)"
               disabled={animating || !imageReady}
             >
-              ‹
+              <span className="image-nav-glyph" aria-hidden="true">
+                ‹
+              </span>
             </button>
             <button
               type="button"
@@ -172,7 +174,9 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
               title="Like (→)"
               disabled={animating || !imageReady}
             >
-              ›
+              <span className="image-nav-glyph" aria-hidden="true">
+                ›
+              </span>
             </button>
           </div>
         ) : null}
