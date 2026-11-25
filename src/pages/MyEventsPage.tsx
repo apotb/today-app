@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { EventCalendar } from '../components/EventCalendar'
 import { EventDetailsModal } from '../components/EventDetailsModal'
 import { getSessionId } from '../lib/session'
-import { formatDateTime12h } from '../lib/format'
 import type { EventItem } from '../types/models'
 import { getStoredLocation } from '../lib/location'
 import {
@@ -12,86 +11,93 @@ import {
 } from '../lib/discoverySettings'
 import { maybeNotifyUpcoming } from '../lib/notifications'
 
+/** Start of today (local) for a wall-clock instant */
+function startOfTodayMs(nowMs: number): Date {
+  const d = new Date(nowMs)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+/** Midnight at the start of the day that is `daysAfter` days after `nowMs`'s calendar day (local). */
+function startOfDayAfterMs(nowMs: number, daysAfter: number): Date {
+  const d = startOfTodayMs(nowMs)
+  d.setDate(d.getDate() + daysAfter)
+  return d
+}
+
 export function MyEventsPage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [selected, setSelected] = useState<EventItem | null>(null)
   const [error, setError] = useState('')
-  const [referenceNow] = useState(() => Date.now())
+  const [loading, setLoading] = useState(true)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   const refreshEvents = useCallback(async () => {
+    setLoading(true)
+    setError('')
     try {
       const settings = getStoredDiscoverySettings()
-      await api.syncEvents(
-        getSessionId(),
-        getStoredLocation(),
-        settings.radius,
-        settings.unit,
-      )
+      const loc = getStoredLocation()
+      if (!loc) {
+        setError('Allow location in Settings to load your events.')
+        setEvents([])
+        return
+      }
+      await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit)
       const response = await api.getMyEvents(getSessionId())
       setEvents(response.events)
+      setNowMs(Date.now())
       await maybeNotifyUpcoming(response.events)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load your events.')
+    } finally {
+      setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    void refreshEvents()
-  }, [])
+    const id = window.setTimeout(() => {
+      void refreshEvents()
+    }, 0)
+    return () => window.clearTimeout(id)
+  }, [refreshEvents])
 
   useEffect(() => onDiscoverySettingsChanged(() => void refreshEvents()), [refreshEvents])
 
-  const setAttendance = async (eventId: string, status: 'attended' | 'missed') => {
-    await api.setAttendance(getSessionId(), eventId, status)
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === eventId ? { ...event, attendance_status: status } : event,
-      ),
+  const upcoming = useMemo(() => {
+    const endExclusive = startOfDayAfterMs(nowMs, 3)
+    return events.filter((event) => {
+      const t = new Date(event.starts_at).getTime()
+      return t >= nowMs && t < endExclusive.getTime()
+    })
+  }, [events, nowMs])
+
+  if (loading) {
+    return (
+      <div className="page page-events-loading">
+        <h1>Events</h1>
+        <div className="events-loading events-loading-full" role="status">
+          <div className="spinner spinner-lg" aria-hidden />
+          <p className="events-loading-title">Loading your events…</p>
+          <p className="events-loading-sub">Syncing with the server</p>
+        </div>
+      </div>
     )
   }
 
-  const in24h = referenceNow + 24 * 60 * 60 * 1000
-  const upcoming = events.filter((event) => {
-    const starts = new Date(event.starts_at).getTime()
-    return starts >= referenceNow && starts <= in24h
-  })
-  const past = events.filter((event) => new Date(event.starts_at).getTime() < referenceNow)
-
   return (
     <div className="page">
-      <h1>My Events</h1>
+      <h1>Events</h1>
+      <p className="status events-calendar-subtitle">
+        Today through{' '}
+        {startOfDayAfterMs(nowMs, 2).toLocaleDateString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        })}{' '}
+        (no past events)
+      </p>
       {error ? <p className="error">{error}</p> : <EventCalendar events={upcoming} onSelect={setSelected} />}
-      <section className="panel past-events">
-        <h2>Past Events</h2>
-        {past.length === 0 ? (
-          <p className="empty">No past events yet.</p>
-        ) : (
-          <ul>
-            {past.map((event) => (
-              <li key={event.id}>
-                <div>
-                  <p className="past-title">{event.title}</p>
-                  <p className="status">{formatDateTime12h(event.starts_at)}</p>
-                </div>
-                <div className="attendance-actions">
-                  <button
-                    className={`btn btn-ghost ${event.attendance_status === 'attended' ? 'active' : ''}`}
-                    onClick={() => void setAttendance(event.id, 'attended')}
-                  >
-                    Attended
-                  </button>
-                  <button
-                    className={`btn btn-ghost ${event.attendance_status === 'missed' ? 'active' : ''}`}
-                    onClick={() => void setAttendance(event.id, 'missed')}
-                  >
-                    Did not attend
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
       {selected ? <EventDetailsModal event={selected} onClose={() => setSelected(null)} /> : null}
     </div>
   )

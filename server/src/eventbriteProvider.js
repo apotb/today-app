@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { stripDateTimeFromTitle } from './titleClean.js'
 
 const mapCategory = (raw = '') => {
   const value = raw.toLowerCase()
@@ -50,9 +51,12 @@ const normalizeEventbrite = (event) => {
     event?.name?.text ??
     ''
 
+  const lat = venue?.latitude != null ? Number(venue.latitude) : null
+  const lng = venue?.longitude != null ? Number(venue.longitude) : null
+
   return {
     id: `eb_${event.id ?? randomUUID()}`,
-    title: cleanTitle(event?.name?.text ?? 'Local Event'),
+    title: stripDateTimeFromTitle(cleanTitle(event?.name?.text ?? 'Local Event')),
     description: cleanDescription(event?.description?.text ?? ''),
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(end).toISOString(),
@@ -62,6 +66,11 @@ const normalizeEventbrite = (event) => {
     location: venueName && venueAddress ? `${venueName} · ${venueAddress}` : venueName ?? 'Local Venue',
     address: venueAddress ?? venueName ?? 'Local Venue',
     sourceUrl: event?.url ?? null,
+    latitude: Number.isFinite(lat) ? lat : null,
+    longitude: Number.isFinite(lng) ? lng : null,
+    provider: 'eventbrite',
+    organizerKey: event?.organizer_id ? String(event.organizer_id) : venue?.id ? String(venue.id) : null,
+    tags: [],
   }
 }
 
@@ -70,7 +79,7 @@ export async function fetchEventbriteEvents({ location = {}, radius = 25, unit =
   if (!token) return []
 
   const now = new Date()
-  const end = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  const end = new Date(Date.now() + 48 * 60 * 60 * 1000)
 
   const params = new URLSearchParams({
     'start_date.range_start': now.toISOString(),
@@ -80,16 +89,12 @@ export async function fetchEventbriteEvents({ location = {}, radius = 25, unit =
   })
 
   const within = `${radius}${unit === 'km' ? 'km' : 'mi'}`
-  if (location.zip) {
-    params.set('location.address', location.zip)
-    params.set('location.within', within)
-  } else if (location.latitude && location.longitude) {
+  if (location.latitude != null && location.longitude != null) {
     params.set('location.latitude', `${location.latitude}`)
     params.set('location.longitude', `${location.longitude}`)
     params.set('location.within', within)
   } else {
-    params.set('location.address', 'United States')
-    params.set('location.within', within)
+    return []
   }
 
   try {

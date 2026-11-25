@@ -6,7 +6,7 @@ import { all, get, initDb, run } from './db.js'
 import { fetchExternalEvents } from './eventsProvider.js'
 
 const app = express()
-const port = 4000
+const port = Number(process.env.PORT) || 4000
 
 app.use(cors())
 app.use(express.json())
@@ -58,9 +58,11 @@ const questionnaireSchema = z.object({
         questionId: z.string().min(1),
         answer: z.boolean(),
         categories: z.array(z.enum(categories)).min(1),
+        tags: z.array(z.string()).optional(),
       }),
     )
-    .min(1),
+    .min(1)
+    .max(10),
 })
 
 const attendanceSchema = z.object({
@@ -69,10 +71,15 @@ const attendanceSchema = z.object({
   status: z.enum(['attended', 'missed']),
 })
 
+const optionalFiniteNumber = z.preprocess((val) => {
+  if (val == null || val === '') return undefined
+  const n = Number(val)
+  return Number.isFinite(n) ? n : undefined
+}, z.number().optional())
+
 const locationSchema = z.object({
-  zip: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
+  latitude: optionalFiniteNumber,
+  longitude: optionalFiniteNumber,
 })
 
 const syncSchema = z.object({
@@ -82,10 +89,33 @@ const syncSchema = z.object({
   unit: z.enum(['miles', 'km']).optional(),
 })
 
+/** Discover / sync / providers: now → 48h ahead */
+const FEED_WINDOW_MS = 48 * 60 * 60 * 1000
+
 const getWindow = () => {
   const from = new Date()
-  const to = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  const to = new Date(Date.now() + FEED_WINDOW_MS)
   return { from: from.toISOString(), to: to.toISOString() }
+}
+
+/** Liked events on calendar: load a bit past 3 local calendar days */
+const getMyEventsFetchWindow = () => {
+  const from = new Date()
+  const to = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000)
+  return { from: from.toISOString(), to: to.toISOString() }
+}
+
+const haversineMiles = (lat1, lon1, lat2, lon2) => {
+  if ([lat1, lon1, lat2, lon2].some((v) => v == null || Number.isNaN(Number(v)))) return null
+  const R = 3958.8
+  const toRad = (d) => (Number(d) * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
 }
 
 app.get('/api/health', (_req, res) => {
@@ -117,11 +147,14 @@ app.post('/api/preferences', async (req, res, next) => {
   try {
     const parsed = preferenceSchema.parse(req.body)
     await run('DELETE FROM user_preferences WHERE session_id = ?', [parsed.sessionId])
-    for (const category of parsed.categories) {
+    const n = parsed.categories.length
+    for (let i = 0; i < n; i += 1) {
+      const category = parsed.categories[i]
+      const weight = n - i
       await run(
         `INSERT INTO user_preferences (session_id, category, weight, updated_at)
-         VALUES (?, ?, 1, CURRENT_TIMESTAMP)`,
-        [parsed.sessionId, category],
+         VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+        [parsed.sessionId, category, weight],
       )
     }
     res.status(201).json({ success: true })
@@ -136,18 +169,35 @@ app.post('/api/onboarding/responses', async (req, res, next) => {
     await run('DELETE FROM user_questionnaire_answers WHERE session_id = ?', [
       parsed.sessionId,
     ])
+    await run('DELETE FROM user_tag_scores WHERE session_id = ?', [parsed.sessionId])
+
+    const tagAccum = new Map()
     for (const item of parsed.answers) {
       await run(
         `INSERT INTO user_questionnaire_answers
-          (session_id, question_id, answer, categories_json, created_at)
-         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+          (session_id, question_id, answer, categories_json, tags_json, created_at)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
         [
           parsed.sessionId,
           item.questionId,
           item.answer ? 1 : 0,
           JSON.stringify(item.categories),
+          JSON.stringify(item.tags ?? []),
         ],
       )
+      const tagList =
+        item.tags && item.tags.length > 0 ? item.tags : item.categories
+      const delta = item.answer ? 2 : -1
+      for (const tag of tagList) {
+        tagAccum.set(tag, (tagAccum.get(tag) ?? 0) + delta)
+      }
+    }
+    for (const [tag, score] of tagAccum) {
+      await run(`INSERT INTO user_tag_scores (session_id, tag, score) VALUES (?, ?, ?)`, [
+        parsed.sessionId,
+        tag,
+        score,
+      ])
     }
     res.status(201).json({ success: true })
   } catch (error) {
@@ -200,32 +250,43 @@ app.post('/api/events/sync', async (req, res, next) => {
     const radius = parsed.radius ?? 25
     const unit = parsed.unit ?? 'miles'
 
-    let preferredCategories = []
-    if (parsed.sessionId) {
-      const prefs = await all(
-        'SELECT category, weight FROM user_preferences WHERE session_id = ? ORDER BY weight DESC',
-        [parsed.sessionId],
-      )
-      preferredCategories = prefs.map((p) => p.category)
+    if (
+      location.latitude == null ||
+      location.longitude == null ||
+      !Number.isFinite(Number(location.latitude)) ||
+      !Number.isFinite(Number(location.longitude))
+    ) {
+      res.status(400).json({ message: 'latitude and longitude are required' })
+      return
     }
 
     const fetchedEvents = await fetchExternalEvents({
       location,
       radius,
       unit,
-      preferredCategories,
     })
-    await run(
-      `DELETE FROM events
-       WHERE id LIKE 'local-%'
-          OR id LIKE 'seed-%'
-          OR id NOT LIKE 'tm_%' AND id NOT LIKE 'eb_%'`,
-    )
+    await run(`DELETE FROM events WHERE id LIKE 'evt_%' OR id LIKE 'tm_%' OR id LIKE 'eb_%' OR id LIKE 'gp_%'`)
     for (const event of fetchedEvents) {
       await run(
-        `INSERT OR REPLACE INTO events (
-          id, title, description, starts_at, ends_at, cost, image_url, category, location, address
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO events (
+          id, title, description, starts_at, ends_at, cost, image_url, category, location, address,
+          latitude, longitude, tags, source_url, series_key
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          description = excluded.description,
+          starts_at = excluded.starts_at,
+          ends_at = excluded.ends_at,
+          cost = excluded.cost,
+          image_url = excluded.image_url,
+          category = excluded.category,
+          location = excluded.location,
+          address = excluded.address,
+          latitude = excluded.latitude,
+          longitude = excluded.longitude,
+          tags = excluded.tags,
+          source_url = excluded.source_url,
+          series_key = excluded.series_key`,
         [
           event.id,
           event.title,
@@ -237,6 +298,11 @@ app.post('/api/events/sync', async (req, res, next) => {
           event.category,
           event.location,
           event.address ?? event.location,
+          event.latitude ?? null,
+          event.longitude ?? null,
+          JSON.stringify(event.tags ?? []),
+          event.sourceUrl ?? null,
+          event.seriesKey ?? null,
         ],
       )
     }
@@ -262,12 +328,15 @@ app.get('/api/events/discover', async (req, res, next) => {
       return
     }
 
+    const userLat = req.query.latitude != null ? Number(req.query.latitude) : null
+    const userLon = req.query.longitude != null ? Number(req.query.longitude) : null
+
     const { from, to } = getWindow()
     const events = await all(
       `SELECT e.*
        FROM events e
        WHERE e.starts_at BETWEEN ? AND ?
-         AND (e.id LIKE 'tm_%' OR e.id LIKE 'eb_%')
+         AND (e.id LIKE 'evt_%' OR e.id LIKE 'seed-%')
          AND NOT EXISTS (
            SELECT 1 FROM user_interactions ui
            WHERE ui.session_id = ?
@@ -282,6 +351,11 @@ app.get('/api/events/discover', async (req, res, next) => {
       [sessionId],
     )
     const prefMap = new Map(prefs.map((p) => [p.category, p.weight]))
+
+    const tagRows = await all('SELECT tag, score FROM user_tag_scores WHERE session_id = ?', [
+      sessionId,
+    ])
+    const userTagScores = new Map(tagRows.map((r) => [r.tag, r.score]))
 
     const questionRows = await all(
       `SELECT answer, categories_json
@@ -334,26 +408,64 @@ app.get('/api/events/discover', async (req, res, next) => {
       if (row.status === 'missed') scoreByCategory.set(row.category, current - row.count)
     }
 
-    const scored = events
-      .map((event) => {
-        const prefScore = prefMap.get(event.category) ? 4 : 0
-        const questionScore = questionScoreMap.get(event.category) ?? 0
-        const behaviorScore = scoreByCategory.get(event.category) ?? 0
-        const startsSoonScore = Math.max(
-          0,
-          10 -
-            Math.floor(
-              (new Date(event.starts_at).getTime() - Date.now()) / (60 * 60 * 1000),
-            ),
-        )
-        return {
-          ...event,
-          score: prefScore + questionScore + behaviorScore + startsSoonScore,
-        }
-      })
-      .sort((a, b) => b.score - a.score)
+    const enriched = events.map((event) => {
+      let eventTags = []
+      try {
+        eventTags = JSON.parse(event.tags || '[]')
+      } catch {
+        eventTags = []
+      }
+      let tagScreeningScore = 0
+      for (const t of eventTags) {
+        tagScreeningScore += userTagScores.get(t) ?? 0
+      }
 
-    res.json({ events: scored })
+      const prefWeight = prefMap.get(event.category) ?? 0
+      const categoryQuestionScore = questionScoreMap.get(event.category) ?? 0
+      const behaviorScore = scoreByCategory.get(event.category) ?? 0
+
+      const distanceMiles = haversineMiles(userLat, userLon, event.latitude, event.longitude)
+      const hoursUntil =
+        (new Date(event.starts_at).getTime() - Date.now()) / (60 * 60 * 1000)
+      const dateRelevance = Math.max(0, 12 - Math.floor(hoursUntil))
+
+      const preferenceScore =
+        prefWeight * 150 +
+        categoryQuestionScore * 50 +
+        tagScreeningScore * 22 +
+        behaviorScore * 18
+      const score = preferenceScore + dateRelevance * 0.25
+
+      return {
+        ...event,
+        preferenceScore,
+        prefWeight,
+        categoryQuestionScore,
+        tagScreeningScore,
+        behaviorScore,
+        distanceMiles,
+        dateRelevance,
+        score,
+        tieBreak: Math.random(),
+      }
+    })
+
+    enriched.sort((a, b) => {
+      if (b.preferenceScore !== a.preferenceScore) {
+        return b.preferenceScore - a.preferenceScore
+      }
+      const da = a.distanceMiles ?? 1e9
+      const db = b.distanceMiles ?? 1e9
+      if (da !== db) return da - db
+      const ta = new Date(a.starts_at).getTime()
+      const tb = new Date(b.starts_at).getTime()
+      if (ta !== tb) return ta - tb
+      return a.tieBreak - b.tieBreak
+    })
+
+    res.json({
+      events: enriched.map(({ tieBreak, ...rest }) => rest),
+    })
   } catch (error) {
     next(error)
   }
@@ -379,15 +491,17 @@ app.get('/api/my-events', async (req, res, next) => {
       res.status(400).json({ message: 'sessionId is required' })
       return
     }
+    const { from, to } = getMyEventsFetchWindow()
     const events = await all(
       `SELECT DISTINCT e.*
        FROM user_interactions ui
        JOIN events e ON e.id = ui.event_id
        WHERE ui.session_id = ?
          AND ui.action IN ('like', 'attended')
-         AND (e.id LIKE 'tm_%' OR e.id LIKE 'eb_%')
+         AND (e.id LIKE 'evt_%' OR e.id LIKE 'seed-%')
+         AND e.starts_at BETWEEN ? AND ?
        ORDER BY e.starts_at ASC`,
-      [sessionId],
+      [sessionId, from, to],
     )
     const withAttendance = await Promise.all(
       events.map(async (event) => {
@@ -416,8 +530,8 @@ app.use((error, _req, res, _next) => {
 
 initDb()
   .then(() => {
-    app.listen(port, () => {
-      console.log(`Today API running at http://localhost:${port}`)
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`Today API listening on ${port}`)
     })
   })
   .catch((error) => {

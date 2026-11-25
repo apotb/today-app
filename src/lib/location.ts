@@ -1,8 +1,7 @@
 export type StoredLocation = {
-  mode: 'geolocation' | 'zip'
-  zip?: string
-  latitude?: number
-  longitude?: number
+  mode: 'geolocation'
+  latitude: number
+  longitude: number
 }
 
 const LOCATION_KEY = 'today.location'
@@ -11,7 +10,21 @@ export const getStoredLocation = (): StoredLocation | null => {
   const raw = localStorage.getItem(LOCATION_KEY)
   if (!raw) return null
   try {
-    return JSON.parse(raw) as StoredLocation
+    const parsed = JSON.parse(raw) as {
+      latitude?: unknown
+      longitude?: unknown
+    }
+    const lat = Number(parsed.latitude)
+    const lon = Number(parsed.longitude)
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      localStorage.removeItem(LOCATION_KEY)
+      return null
+    }
+    return {
+      mode: 'geolocation',
+      latitude: lat,
+      longitude: lon,
+    }
   } catch {
     return null
   }

@@ -32,6 +32,8 @@ export type QuestionItem = {
   id: string
   prompt: string
   categories: EventCategory[]
+  /** Semantic tags used for personalization scoring */
+  tags: string[]
 }
 
 export type EventItem = {
@@ -45,6 +47,9 @@ export type EventItem = {
   category: EventCategory
   location: string
   address?: string | null
+  source_url?: string | null
+  /** Same series / recurring show; used to hide other showtimes after a like */
+  series_key?: string | null
   attendance_status?: 'attended' | 'missed' | null
   score?: number
 }

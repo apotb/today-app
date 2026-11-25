@@ -1,39 +1,48 @@
-import sqlite3 from 'sqlite3'
+import fs from 'node:fs'
+import path from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 
-const db = new sqlite3.Database('./server/today.db')
+const dbPath =
+  process.env.TODAY_DB_PATH?.trim() || path.join(process.cwd(), 'server', 'today.db')
 
-const run = (sql, params = []) =>
-  new Promise((resolve, reject) => {
-    db.run(sql, params, function onRun(err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve({ lastID: this.lastID, changes: this.changes })
+fs.mkdirSync(path.dirname(dbPath), { recursive: true })
+
+/** Built-in SQLite (Node ≥22.13)—no native `sqlite3` addon, avoids GLIBC/prebuild issues on hosts like Render. */
+const db = new DatabaseSync(dbPath)
+
+/** Match `sqlite3` default: FK checks off unless enabled. `node:sqlite` enables them by default, which breaks `INSERT OR REPLACE` and bulk deletes that the sync path relies on. */
+db.exec('PRAGMA foreign_keys = OFF')
+
+const run = (sql, params = []) => {
+  try {
+    const stmt = db.prepare(sql)
+    const result = stmt.run(...params)
+    return Promise.resolve({
+      lastID: Number(result.lastInsertRowid ?? 0),
+      changes: Number(result.changes ?? 0),
     })
-  })
+  } catch (err) {
+    return Promise.reject(err)
+  }
+}
 
-const all = (sql, params = []) =>
-  new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(rows)
-    })
-  })
+const all = (sql, params = []) => {
+  try {
+    const stmt = db.prepare(sql)
+    return Promise.resolve(stmt.all(...params))
+  } catch (err) {
+    return Promise.reject(err)
+  }
+}
 
-const get = (sql, params = []) =>
-  new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(row)
-    })
-  })
+const get = (sql, params = []) => {
+  try {
+    const stmt = db.prepare(sql)
+    return Promise.resolve(stmt.get(...params))
+  } catch (err) {
+    return Promise.reject(err)
+  }
+}
 
 const now = Date.now()
 const inHours = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString()
@@ -138,31 +147,20 @@ export const initDb = async () => {
   `)
 
   await ensureColumn('events', 'address', 'TEXT')
+  await ensureColumn('events', 'latitude', 'REAL')
+  await ensureColumn('events', 'longitude', 'REAL')
+  await ensureColumn('events', 'tags', 'TEXT')
+  await ensureColumn('events', 'source_url', 'TEXT')
+  await ensureColumn('events', 'series_key', 'TEXT')
 
-  await run(
-    `DELETE FROM user_interactions
-     WHERE event_id IN (
-       SELECT id FROM events
-       WHERE id LIKE 'local-%'
-          OR id LIKE 'seed-%'
-          OR title LIKE '%AI Mereting%'
-     )`,
-  )
-  await run(
-    `DELETE FROM user_event_attendance
-     WHERE event_id IN (
-       SELECT id FROM events
-       WHERE id LIKE 'local-%'
-          OR id LIKE 'seed-%'
-          OR title LIKE '%AI Mereting%'
-     )`,
-  )
-  await run(
-    `DELETE FROM events
-     WHERE id LIKE 'local-%'
-        OR id LIKE 'seed-%'
-        OR title LIKE '%AI Mereting%'`,
-  )
+  await run(`
+    CREATE TABLE IF NOT EXISTS user_tag_scores (
+      session_id TEXT NOT NULL,
+      tag TEXT NOT NULL,
+      score REAL NOT NULL DEFAULT 0,
+      PRIMARY KEY (session_id, tag)
+    )
+  `)
 
   await run(`
     CREATE TABLE IF NOT EXISTS user_preferences (
@@ -197,6 +195,8 @@ export const initDb = async () => {
     )
   `)
 
+  await ensureColumn('user_questionnaire_answers', 'tags_json', 'TEXT')
+
   await run(`
     CREATE TABLE IF NOT EXISTS user_event_attendance (
       session_id TEXT NOT NULL,
@@ -207,6 +207,31 @@ export const initDb = async () => {
       FOREIGN KEY(event_id) REFERENCES events(id)
     )
   `)
+
+  await run(
+    `DELETE FROM user_interactions
+     WHERE event_id IN (
+       SELECT id FROM events
+       WHERE id LIKE 'local-%'
+          OR id LIKE 'seed-%'
+          OR title LIKE '%AI Mereting%'
+     )`,
+  )
+  await run(
+    `DELETE FROM user_event_attendance
+     WHERE event_id IN (
+       SELECT id FROM events
+       WHERE id LIKE 'local-%'
+          OR id LIKE 'seed-%'
+          OR title LIKE '%AI Mereting%'
+     )`,
+  )
+  await run(
+    `DELETE FROM events
+     WHERE id LIKE 'local-%'
+        OR id LIKE 'seed-%'
+        OR title LIKE '%AI Mereting%'`,
+  )
 
   const row = await get('SELECT COUNT(*) as count FROM events')
   if (row?.count === 0) {

@@ -1,6 +1,31 @@
 import { randomUUID } from 'node:crypto'
 import { fetchEventbriteEvents } from './eventbriteProvider.js'
-import { enrichWithPlaces } from './googlePlaces.js'
+import { fetchGooglePlacesEvents } from './googlePlacesEvents.js'
+import { aggregateAndDedupeEvents } from './eventAggregation.js'
+import { stripDateTimeFromTitle } from './titleClean.js'
+
+const FEED_RANGE_MS = 48 * 60 * 60 * 1000
+
+const ticketmasterStartIso = (event) => {
+  const d = event?.dates?.start
+  if (!d) return null
+  if (d.dateTime) {
+    const parsed = new Date(d.dateTime)
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+  }
+  if (d.localDate) {
+    const lt = d.localTime ? String(d.localTime) : ''
+    let timePart = '12:00:00'
+    if (lt.length >= 8) timePart = lt.slice(0, 8)
+    else if (lt.length === 5) timePart = `${lt}:00`
+    const combined = `${d.localDate}T${timePart}`
+    const parsed = new Date(combined)
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+    const fallback = new Date(`${d.localDate}T12:00:00.000Z`)
+    if (!Number.isNaN(fallback.getTime())) return fallback.toISOString()
+  }
+  return null
+}
 
 const mapCategory = (raw = '') => {
   const value = raw.toLowerCase()
@@ -32,7 +57,7 @@ const cleanDescription = (value = '') => {
 }
 
 const normalizeTicketmasterEvent = (event) => {
-  const start = event?.dates?.start?.dateTime
+  const start = ticketmasterStartIso(event)
   if (!start) return null
   const venue = event?._embedded?.venues?.[0]
   const classification = event?.classifications?.[0]
@@ -41,11 +66,16 @@ const normalizeTicketmasterEvent = (event) => {
   const venueAddress = [venue?.address?.line1, venue?.city?.name, venue?.state?.stateCode]
     .filter(Boolean)
     .join(', ')
+  const promoter = event?.promoter?._embedded?.promoters?.[0] ?? event?.promoter
+  const organizerKey = promoter?.id ?? promoter?.name ?? null
+  const lat = venue?.location?.latitude != null ? Number(venue.location.latitude) : null
+  const lng = venue?.location?.longitude != null ? Number(venue.location.longitude) : null
+
   return {
     id: `tm_${event.id ?? randomUUID()}`,
-    title: cleanTitle(event.name ?? 'Local Event'),
+    title: stripDateTimeFromTitle(cleanTitle(event.name ?? 'Local Event')),
     description: cleanDescription(event.info ?? event.pleaseNote ?? ''),
-    startsAt: new Date(start).toISOString(),
+    startsAt: start,
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
     cost: event?.priceRanges?.[0]?.min ?? 0,
     imageUrl: image ?? null,
@@ -53,6 +83,11 @@ const normalizeTicketmasterEvent = (event) => {
     location: venue?.name ?? 'Local Venue',
     address: venueAddress || venue?.name || 'Local Venue',
     sourceUrl: event?.url ?? null,
+    latitude: Number.isFinite(lat) ? lat : null,
+    longitude: Number.isFinite(lng) ? lng : null,
+    provider: 'ticketmaster',
+    organizerKey: organizerKey ? String(organizerKey) : null,
+    tags: [],
   }
 }
 
@@ -74,49 +109,32 @@ const uniqEvents = (events) => {
   return out
 }
 
-const filterByPreferences = (events, preferredCategories) => {
-  if (!preferredCategories || preferredCategories.length === 0) return events
-  const set = new Set(preferredCategories)
-  const filtered = events.filter((e) => set.has(e.category))
-  return filtered.length > 0 ? filtered : events
-}
-
-const ensureUniqueImages = (events) => {
-  const seen = new Set()
-  return events.map((event) => {
-    const currentImage = event?.imageUrl ? String(event.imageUrl) : ''
-    if (currentImage && !seen.has(currentImage)) {
-      seen.add(currentImage)
-      return event
-    }
-    const fallback = `https://picsum.photos/seed/today-${encodeURIComponent(event.id)}/1200/675`
-    seen.add(fallback)
-    return { ...event, imageUrl: fallback }
-  })
-}
-
 const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles') => {
   const key = process.env.TICKETMASTER_API_KEY
   if (!key) {
     return []
   }
 
+  const hasCoords =
+    location.latitude != null &&
+    location.longitude != null &&
+    Number.isFinite(Number(location.latitude)) &&
+    Number.isFinite(Number(location.longitude))
+  if (!hasCoords) return []
+
   const now = new Date()
-  const end = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  const end = new Date(Date.now() + FEED_RANGE_MS)
   const params = new URLSearchParams({
     apikey: key,
-    size: '50',
+    size: '200',
     sort: 'date,asc',
     startDateTime: now.toISOString().replace(/\.\d{3}Z$/, 'Z'),
     endDateTime: end.toISOString().replace(/\.\d{3}Z$/, 'Z'),
   })
 
-  if (location.zip) params.set('postalCode', location.zip)
-  if (location.latitude && location.longitude) {
-    params.set('latlong', `${location.latitude},${location.longitude}`)
-    params.set('radius', `${radius}`)
-    params.set('unit', unit === 'km' ? 'km' : 'miles')
-  }
+  params.set('latlong', `${location.latitude},${location.longitude}`)
+  params.set('radius', `${radius}`)
+  params.set('unit', unit === 'km' ? 'km' : 'miles')
 
   try {
     const response = await fetch(
@@ -135,25 +153,29 @@ const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles
   }
 }
 
-export const fetchExternalEvents = async ({
-  location = {},
-  radius = 25,
-  unit = 'miles',
-  preferredCategories = [],
-} = {}) => {
-  const [ticketmaster, eventbrite] = await Promise.all([
+export const fetchExternalEvents = async (options = {}) => {
+  const { radius = 25, unit = 'miles' } = options
+  const { location = {} } = options
+
+  const hasCoords =
+    location.latitude != null &&
+    location.longitude != null &&
+    Number.isFinite(Number(location.latitude)) &&
+    Number.isFinite(Number(location.longitude))
+  if (!hasCoords) {
+    return []
+  }
+
+  const [ticketmaster, eventbrite, googlePlaces] = await Promise.all([
     fetchTicketmasterEvents(location, radius, unit),
     fetchEventbriteEvents({ location, radius, unit }),
+    fetchGooglePlacesEvents({ location, radius, unit }),
   ])
 
-  let merged = uniqEvents([...ticketmaster, ...eventbrite])
-  merged = filterByPreferences(merged, preferredCategories)
-  merged = ensureUniqueImages(merged)
-
+  let merged = uniqEvents([...ticketmaster, ...eventbrite, ...googlePlaces])
   if (merged.length === 0) {
     return []
   }
 
-  const enriched = await enrichWithPlaces(merged, { location, radius, unit })
-  return ensureUniqueImages(enriched.length > 0 ? enriched : merged)
+  return aggregateAndDedupeEvents(merged)
 }

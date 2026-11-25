@@ -13,8 +13,8 @@ Today is a full-stack local event discovery app with a Tinder-style swipe interf
   - REST API for preferences, discovery, interactions, and saved events
   - Validation using `zod`
   - Recommendation scoring from preferences + interaction history
-- **Database (`SQLite`)**
-  - Local DB file: `server/today.db`
+- **Database (`SQLite` via Node `node:sqlite`)**
+  - Local DB file: `server/today.db` (requires **Node 22.13+** for the API)
   - Seeded sample events on first boot
 
 ## Folder structure
@@ -64,9 +64,9 @@ Base URL: `http://localhost:4000/api`
 - `POST /onboarding/responses`
   - Save yes/no questionnaire answers and mapped categories.
 - `POST /events/sync`
-  - Fetch and normalize external events based on ZIP/coordinates, user preferences, and radius.
+  - Fetch and normalize external events based on coordinates, user preferences, and radius (typically a ~48h window).
 - `GET /events/discover?sessionId=...`
-  - Returns events in next 24 hours not already liked/disliked.
+  - Returns events in roughly the next 48 hours not already liked/disliked.
   - Uses scoring from preferences and historical interactions.
 - `POST /interactions`
   - Store swipe interaction (`like`, `dislike`) per event.
@@ -221,6 +221,46 @@ Open:
 - [http://localhost:4000/api/debug/providers](http://localhost:4000/api/debug/providers)
 
 You should see `true` for providers you configured in `.env.local`.
+
+## Deploy (Vercel site + API host)
+
+The Vercel project is only the static frontend. The API must run on a Node host (Render, Railway, Fly, etc.).
+
+### Render (quickest from this repo)
+
+1. Push this repo to GitHub (if it is not already).
+2. In [Render](https://render.com): **New → Blueprint**, connect the repo, and apply `render.yaml`.
+3. After the service is created, open it → **Environment** → add (optional but needed for real event data):
+   - `TICKETMASTER_API_KEY`, `EVENTBRITE_API_TOKEN`, `GOOGLE_PLACES_API_KEY` (same as `.env.local` locally).
+4. Wait for deploy; open `https://<your-service>.onrender.com/api/health` and confirm JSON `{"ok":true}`.
+5. In **Vercel** → your project → **Environment variables** → add **`VITE_API_BASE`** = `https://<your-service>.onrender.com/api` (your real host).
+6. **Redeploy** the Vercel app so the build picks up `VITE_API_BASE`.
+
+SQLite on Render’s free tier is stored on an **ephemeral** disk (data can reset on restarts). For a durable DB, add a Render **disk** and set **`TODAY_DB_PATH`** to a file on that mount (e.g. `/mnt/data/today.db`).
+
+### Render deploy troubleshooting
+
+- **Build failed / “out of memory” / very long install**  
+  Ensure the service uses **`npm ci --omit=dev`** (see `render.yaml`). A full install pulls in Vite/React and can exhaust the free builder.
+
+- **“Application failed to respond” or health check**  
+  Free web services **sleep** after idle; first request can take ~30–60s. Open **`/api/health`** again after a short wait.
+
+- **Blueprint / YAML errors**  
+  `render.yaml` must be at the **repository root** of the GitHub repo you connect (same folder as `package.json`).
+
+- **Node version**  
+  The API uses **`node:sqlite`** (built into Node). Use **Node 22.13+** locally (`nvm install 22` / `fnm install 22`) and **`NODE_VERSION=22`** on Render (see `render.yaml`).
+
+- **Still stuck**  
+  In Render → your service → **Logs**; copy the **last 30–40 lines** of the failing **build** or **deploy** log—that usually states the exact error (e.g. wrong Node version, missing env).
+
+### Server env
+
+| Variable | Purpose |
+|----------|---------|
+| `PORT` | Set automatically on most hosts (defaults to `4000` locally). |
+| `TODAY_DB_PATH` | Optional absolute path to the SQLite file (default: `server/today.db` under the project root). |
 
 ## Notes
 
