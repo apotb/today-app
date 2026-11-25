@@ -97,7 +97,13 @@ export const api = {
       body: JSON.stringify({ sessionId, eventId, action }),
     }),
 
-  setAttendance: (sessionId: string, eventId: string, status: 'attended' | 'missed') =>
+  undoInteraction: (sessionId: string, eventId: string, action: 'like' | 'dislike') =>
+    request<{ success: boolean; removed: number }>('/interactions/undo', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, eventId, action }),
+    }),
+
+  setAttendance:(sessionId: string, eventId: string, status: 'attended' | 'missed') =>
     request<{ success: boolean }>('/attendance', {
       method: 'POST',
       body: JSON.stringify({ sessionId, eventId, status }),

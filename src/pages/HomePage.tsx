@@ -30,6 +30,12 @@ export function HomePage() {
   const [vibes, setVibes] = useState<VibeId[]>(getStoredVibes)
   // "Tonight" is judged against the time the feed was loaded.
   const [loadedAtMs, setLoadedAtMs] = useState(() => Date.now())
+  // The most recent swipe and the cards it took off the deck, so it can be undone.
+  const [lastSwipe, setLastSwipe] = useState<{
+    action: 'like' | 'dislike'
+    removed: EventItem[]
+  } | null>(null)
+  const [undoing, setUndoing] = useState(false)
   const isDesktop = useIsDesktop()
 
   useEffect(() => {
@@ -41,6 +47,7 @@ export function HomePage() {
     setLoading(true)
     setError('')
     setSwipeError('')
+    setLastSwipe(null)
     try {
       const settings = getStoredDiscoverySettings()
       const loc = getStoredLocation()
@@ -106,13 +113,34 @@ export function HomePage() {
     if (direction === 'right') notifyFirstLike()
 
     // Remove by id rather than position: with vibes on, the card shown isn't
-    // necessarily the first event in the full list.
-    setEvents((prev) => {
-      const rest = prev.filter((e) => e.id !== current.id)
-      if (direction !== 'right') return rest
-      const likedKey = seriesDedupeKey(current)
-      return rest.filter((e) => seriesDedupeKey(e) !== likedKey)
-    })
+    // necessarily the first event in the full list. A like also removes other
+    // showtimes of the same series.
+    const likedKey = direction === 'right' ? seriesDedupeKey(current) : null
+    const removed = [
+      current,
+      ...events.filter((e) => e.id !== current.id && likedKey && seriesDedupeKey(e) === likedKey),
+    ]
+    const removedIds = new Set(removed.map((e) => e.id))
+    setEvents((prev) => prev.filter((e) => !removedIds.has(e.id)))
+    setLastSwipe({ action, removed })
+  }
+
+  const undoLastSwipe = async () => {
+    if (!lastSwipe || undoing) return
+    const [event] = lastSwipe.removed
+    setUndoing(true)
+    try {
+      await api.undoInteraction(getSessionId(), event.id, lastSwipe.action)
+      const restoredIds = new Set(lastSwipe.removed.map((e) => e.id))
+      // Put the cards back on top of the deck, the undone one first.
+      setEvents((prev) => [...lastSwipe.removed, ...prev.filter((e) => !restoredIds.has(e.id))])
+      setLastSwipe(null)
+      setSwipeError('')
+    } catch {
+      setSwipeError("Couldn't undo that swipe. Check your connection and try again.")
+    } finally {
+      setUndoing(false)
+    }
   }
 
   const showTutorial = !loading && !error && !tutorialDismissed
@@ -147,10 +175,23 @@ export function HomePage() {
       {!showTutorial && events.length > 0 ? (
         <VibeChips selected={vibes} onChange={changeVibes} />
       ) : null}
-      {!showTutorial && current ? (
+      {!showTutorial && (current || lastSwipe) ? (
         <p className="home-swipe-hint">
-          Swipe up for details
-          {isDesktop ? ' · Use ↑ ← →' : ''}
+          {current ? 'Swipe up for details' : null}
+          {current && isDesktop ? ' · Use ↑ ← →' : null}
+          {lastSwipe ? (
+            <>
+              {current ? ' · ' : null}
+              <button
+                type="button"
+                className="home-undo-btn"
+                onClick={() => void undoLastSwipe()}
+                disabled={undoing}
+              >
+                ↶ Undo {lastSwipe.action === 'like' ? 'like' : 'skip'}
+              </button>
+            </>
+          ) : null}
         </p>
       ) : null}
       {swipeError ? (

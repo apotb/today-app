@@ -232,6 +232,20 @@ app.post('/api/interactions', async (req, res, next) => {
   }
 })
 
+/** Undo a swipe: removes that like/dislike so the event returns to the feed. */
+app.post('/api/interactions/undo', async (req, res, next) => {
+  try {
+    const parsed = interactionSchema.parse(req.body)
+    const result = await run(
+      `DELETE FROM user_interactions WHERE session_id = ? AND event_id = ? AND action = ?`,
+      [parsed.sessionId, parsed.eventId, parsed.action],
+    )
+    res.json({ success: true, removed: result.changes })
+  } catch (error) {
+    next(error)
+  }
+})
+
 app.post('/api/events/sync', async (req, res, next) => {
   try {
     const parsed = syncSchema.parse(req.body ?? {})
