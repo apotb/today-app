@@ -87,7 +87,18 @@ const syncSchema = z.object({
   location: locationSchema.optional(),
   radius: z.number().positive().max(200).optional(),
   unit: z.enum(['miles', 'km']).optional(),
+  force: z.boolean().optional(),
 })
+
+/** How long a synced area's events are reused before the providers are called again. */
+const SYNC_FRESH_MS = 30 * 60 * 1000
+
+/**
+ * Identifies a synced area. Coordinates are rounded to 2 decimals (~1 km), so
+ * nearby users and small GPS jitter share the same cached sync.
+ */
+const syncAreaKey = (latitude, longitude, radius, unit) =>
+  `${Number(latitude).toFixed(2)},${Number(longitude).toFixed(2)}|${radius}${unit}`
 
 /** Discover / sync / providers: now → 48h ahead */
 const FEED_WINDOW_MS = 48 * 60 * 60 * 1000
@@ -279,6 +290,16 @@ app.post('/api/events/sync', async (req, res, next) => {
       return
     }
 
+    const areaKey = syncAreaKey(location.latitude, location.longitude, radius, unit)
+    if (!parsed.force) {
+      const lastSync = await get('SELECT synced_at FROM sync_areas WHERE area_key = ?', [areaKey])
+      const ageMs = lastSync ? Date.now() - new Date(lastSync.synced_at).getTime() : Infinity
+      if (ageMs < SYNC_FRESH_MS) {
+        res.json({ success: true, imported: 0, cached: true })
+        return
+      }
+    }
+
     const fetchedEvents = await fetchExternalEvents({
       location,
       radius,
@@ -327,8 +348,18 @@ app.post('/api/events/sync', async (req, res, next) => {
         ],
       )
     }
+    // Providers swallow their own errors and return [], so an empty result might be a
+    // failure. Only remember the sync when it actually returned events.
+    if (fetchedEvents.length > 0) {
+      await run(
+        `INSERT INTO sync_areas (area_key, synced_at) VALUES (?, ?)
+         ON CONFLICT(area_key) DO UPDATE SET synced_at = excluded.synced_at`,
+        [areaKey, new Date().toISOString()],
+      )
+    }
     res.json({
       success: true,
+      cached: false,
       imported: fetchedEvents.length,
       providers: {
         ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),

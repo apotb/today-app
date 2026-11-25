@@ -73,10 +73,12 @@ export const api = {
     location: StoredLocation | null,
     radius: number,
     unit: DistanceUnit,
+    /** Skip the server's 30-minute cache and call the event providers again. */
+    force = false,
   ) =>
-    request<{ success: boolean; imported: number }>('/events/sync', {
+    request<{ success: boolean; imported: number; cached?: boolean }>('/events/sync', {
       method: 'POST',
-      body: JSON.stringify({ sessionId, location: location ?? {}, radius, unit }),
+      body: JSON.stringify({ sessionId, location: location ?? {}, radius, unit, force }),
     }),
 
   discoverEvents: (

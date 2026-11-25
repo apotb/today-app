@@ -197,6 +197,15 @@ export const initDb = async () => {
 
   await ensureColumn('user_questionnaire_answers', 'tags_json', 'TEXT')
 
+  // One row per synced area (rounded location + radius) so repeat syncs within a
+  // short window can skip calling the external providers.
+  await run(`
+    CREATE TABLE IF NOT EXISTS sync_areas (
+      area_key TEXT PRIMARY KEY,
+      synced_at TEXT NOT NULL
+    )
+  `)
+
   await run(`
     CREATE TABLE IF NOT EXISTS user_event_attendance (
       session_id TEXT NOT NULL,
