@@ -449,7 +449,8 @@ app.get('/api/events/discover', async (req, res, next) => {
     for (const row of historical) {
       const current = scoreByCategory.get(row.category) ?? 0
       if (row.action === 'like') scoreByCategory.set(row.category, current + row.count * 2)
-      if (row.action === 'attended') scoreByCategory.set(row.category, current + row.count * 3)
+      // 'attended' is also written to user_event_attendance, which is scored below.
+      // Counting it here too would double its weight.
       if (row.action === 'dislike') scoreByCategory.set(row.category, current - row.count * 2)
     }
 
