@@ -485,7 +485,6 @@ button.tutorial-dismiss {
   padding: 6px 10px;
   border-radius: 999px;
   margin: 0 0 8px;
-  text-transform: capitalize;
   font-weight: 600;
   font-size: 0.9rem;
 }

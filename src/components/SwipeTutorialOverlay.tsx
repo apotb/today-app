@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import type { EventItem } from '../types/models'
 import { formatDateTime12h, formatPrice } from '../lib/format'
+import { categoryLabel } from '../lib/eventActions'
 
 const DEMO_EVENT: EventItem = {
   id: 'tutorial-demo',
@@ -95,7 +96,7 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
             <div className="image-gradient" />
           </div>
           <div className="card-body">
-            <p className="chip">{DEMO_EVENT.category}</p>
+            <p className="chip">{categoryLabel(DEMO_EVENT.category)}</p>
             <h2 className="card-title">{DEMO_EVENT.title}</h2>
             <p>{formatDateTime12h(DEMO_EVENT.starts_at)}</p>
             <p>{DEMO_EVENT.location}</p>
