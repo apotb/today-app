@@ -24,7 +24,7 @@ There are no accounts yet. Each browser gets a random session id stored in `loca
 2. If that area (location rounded to ~1 km, plus radius) was synced in the last **30 minutes**, the server skips the provider call and reuses stored events.
 3. Otherwise it fetches from Ticketmaster, normalizes the results, and merges duplicates (same title and venue around the same time). Each event gets a stable `evt_...` id.
 4. Events are upserted into the shared `events` table. Events that have ended and that nobody swiped on are pruned. Events with swipes are kept so saved events and swipe history aren't lost.
-5. `GET /api/events/discover` returns upcoming events within the user's radius that they haven't swiped on yet, ranked for that user.
+5. `GET /api/events/discover` returns upcoming events within the user's radius that they haven't swiped on yet, ranked for that user. The built-in sample events only appear when there are no real events near the user at all.
 
 ### Ranking
 

@@ -446,12 +446,25 @@ app.get('/api/events/discover', async (req, res, next) => {
     // The events table holds every user's area, so only keep events near this user.
     // Events without coordinates can't be placed, so they're only shown when the
     // request has no location (or they're the built-in sample events).
-    const nearby = events.filter((event) => {
+    const isNearUser = (event) => {
       if (!hasUserLocation) return true
-      if (event.id.startsWith('seed-')) return true
       const d = haversineMiles(userLat, userLon, event.latitude, event.longitude)
       return d != null && d <= radiusMiles
-    })
+    }
+
+    // Sample events are only a fallback: show them only when this area has no real
+    // events at all in the window. Swiped events still count as real, so swiping
+    // through every real event doesn't bring the samples back.
+    const realEventsInWindow = await all(
+      `SELECT latitude, longitude FROM events
+       WHERE starts_at BETWEEN ? AND ? AND id LIKE 'evt_%'`,
+      [from, to],
+    )
+    const areaHasRealEvents = realEventsInWindow.some(isNearUser)
+
+    const nearby = events.filter((event) =>
+      event.id.startsWith('seed-') ? !areaHasRealEvents : isNearUser(event),
+    )
 
     const enriched = nearby.map((event) => {
       let eventTags = []
