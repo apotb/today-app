@@ -124,7 +124,8 @@ const fetchTicketmasterEvents = async (location = {}, radius = 25, unit = 'miles
   })
 
   params.set('latlong', `${location.latitude},${location.longitude}`)
-  params.set('radius', `${radius}`)
+  // Ask for at least 1 so a radius of 0 is a valid search; discover filters exactly.
+  params.set('radius', `${Math.max(1, Math.ceil(radius))}`)
   params.set('unit', unit === 'km' ? 'km' : 'miles')
 
   try {

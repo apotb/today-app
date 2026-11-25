@@ -60,10 +60,17 @@ const locationSchema = z.object({
   longitude: optionalFiniteNumber,
 })
 
+/** Larger requested radii are reduced to this instead of being rejected. */
+const MAX_RADIUS = 200
+
 const syncSchema = z.object({
   sessionId: z.string().min(1).optional(),
   location: locationSchema.optional(),
-  radius: z.number().positive().max(200).optional(),
+  radius: z
+    .number()
+    .nonnegative()
+    .transform((r) => Math.min(r, MAX_RADIUS))
+    .optional(),
   unit: z.enum(['miles', 'km']).optional(),
   force: z.boolean().optional(),
 })
@@ -351,17 +358,17 @@ app.get('/api/events/discover', async (req, res, next) => {
       return
     }
 
-    const parseCoord = (v) => {
+    const parseNumber = (v) => {
       if (v == null || v === '') return null
       const n = Number(v)
       return Number.isFinite(n) ? n : null
     }
-    const userLat = parseCoord(req.query.latitude)
-    const userLon = parseCoord(req.query.longitude)
+    const userLat = parseNumber(req.query.latitude)
+    const userLon = parseNumber(req.query.longitude)
     const hasUserLocation = userLat != null && userLon != null
-    const requestedRadius = Number(req.query.radius)
+    const requestedRadius = parseNumber(req.query.radius)
     const radius =
-      Number.isFinite(requestedRadius) && requestedRadius > 0 ? Math.min(requestedRadius, 200) : 25
+      requestedRadius != null && requestedRadius >= 0 ? Math.min(requestedRadius, MAX_RADIUS) : 25
     const unit = req.query.unit === 'km' ? 'km' : 'miles'
     const radiusMiles = toMiles(radius, unit)
 

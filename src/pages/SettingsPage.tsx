@@ -8,6 +8,8 @@ import { api } from '../api/client'
 import { dispatchFeedRefresh } from '../lib/feedEvents'
 import { getSessionId } from '../lib/session'
 import {
+  MAX_RADIUS,
+  convertRadius,
   getStoredDiscoverySettings,
   saveDiscoverySettings,
   type DistanceUnit,
@@ -15,21 +17,21 @@ import {
 
 export function SettingsPage() {
   const existingDiscovery = getStoredDiscoverySettings()
-  const [radius, setRadius] = useState(`${existingDiscovery.radius}`)
+  const [radius, setRadius] = useState(existingDiscovery.radius)
   const [unit, setUnit] = useState<DistanceUnit>(existingDiscovery.unit)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [feedRefreshing, setFeedRefreshing] = useState(false)
 
   const saveRadius = () => {
-    const value = Number(radius)
-    if (!Number.isFinite(value) || value <= 0) {
-      setError('Radius must be a positive number.')
-      return
-    }
-    saveDiscoverySettings({ radius: value, unit })
+    saveDiscoverySettings({ radius, unit })
     setError('')
     setMessage('Discovery radius saved.')
+  }
+
+  const changeUnit = (next: DistanceUnit) => {
+    setRadius(convertRadius(radius, unit, next))
+    setUnit(next)
   }
 
   const enableLocation = async () => {
@@ -92,18 +94,31 @@ export function SettingsPage() {
       <section className="panel settings-panel">
         <h2>Discovery radius</h2>
         <p className="status">How far from your location we search for events.</p>
-        <div className="settings-row">
+        <div className="radius-slider">
+          <label htmlFor="discovery-radius">
+            Distance: <strong>{radius} {unit}</strong>
+          </label>
           <input
+            id="discovery-radius"
+            type="range"
+            min={0}
+            max={MAX_RADIUS[unit]}
+            step={1}
             value={radius}
-            onChange={(e) => setRadius(e.target.value)}
-            placeholder="Radius"
-            className="input"
-            inputMode="decimal"
+            onChange={(e) => setRadius(Number(e.target.value))}
+            aria-valuetext={`${radius} ${unit}`}
           />
+          <div className="radius-slider-scale" aria-hidden="true">
+            <span>0</span>
+            <span>{MAX_RADIUS[unit]}</span>
+          </div>
+        </div>
+        <div className="settings-row">
           <select
             className="input"
             value={unit}
-            onChange={(e) => setUnit(e.target.value === 'km' ? 'km' : 'miles')}
+            aria-label="Distance unit"
+            onChange={(e) => changeUnit(e.target.value === 'km' ? 'km' : 'miles')}
           >
             <option value="miles">Miles</option>
             <option value="km">Kilometers</option>
