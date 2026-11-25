@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { fetchEventbriteEvents } from './eventbriteProvider.js'
 import { aggregateAndDedupeEvents } from './eventAggregation.js'
 import { stripDateTimeFromTitle } from './titleClean.js'
 
@@ -165,12 +164,11 @@ export const fetchExternalEvents = async (options = {}) => {
     return []
   }
 
-  const [ticketmaster, eventbrite] = await Promise.all([
-    fetchTicketmasterEvents(location, radius, unit),
-    fetchEventbriteEvents({ location, radius, unit }),
-  ])
+  // Ticketmaster is currently the only source. Add new providers here; results are
+  // merged and deduplicated across sources by aggregateAndDedupeEvents.
+  const ticketmaster = await fetchTicketmasterEvents(location, radius, unit)
 
-  let merged = uniqEvents([...ticketmaster, ...eventbrite])
+  let merged = uniqEvents([...ticketmaster])
   if (merged.length === 0) {
     return []
   }

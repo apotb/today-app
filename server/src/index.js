@@ -155,7 +155,6 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/debug/providers', (_req, res) => {
   res.json({
     ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
-    eventbriteConfigured: Boolean(process.env.EVENTBRITE_API_TOKEN),
   })
 })
 
@@ -362,7 +361,6 @@ app.post('/api/events/sync', async (req, res, next) => {
       imported: fetchedEvents.length,
       providers: {
         ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
-        eventbriteConfigured: Boolean(process.env.EVENTBRITE_API_TOKEN),
       },
     })
   } catch (error) {
