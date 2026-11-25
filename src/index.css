@@ -304,6 +304,12 @@ html.page-home .app-main {
   border: 1px solid #f09999;
 }
 
+.tutorial-bubble-details {
+  background: #d6e8ff;
+  color: #0d2f6b;
+  border: 1px solid #7db0f0;
+}
+
 button.tutorial-dismiss {
   min-width: 200px;
 }

@@ -175,23 +175,16 @@ export function HomePage() {
       {!showTutorial && events.length > 0 ? (
         <VibeChips selected={vibes} onChange={changeVibes} />
       ) : null}
-      {!showTutorial && (current || lastSwipe) ? (
+      {!showTutorial && lastSwipe ? (
         <p className="home-swipe-hint">
-          {current ? 'Swipe up for details' : null}
-          {current && isDesktop ? ' · Use ↑ ← →' : null}
-          {lastSwipe ? (
-            <>
-              {current ? ' · ' : null}
-              <button
-                type="button"
-                className="home-undo-btn"
-                onClick={() => void undoLastSwipe()}
-                disabled={undoing}
-              >
-                ↩ Undo {lastSwipe.action === 'like' ? 'like' : 'skip'}
-              </button>
-            </>
-          ) : null}
+          <button
+            type="button"
+            className="home-undo-btn"
+            onClick={() => void undoLastSwipe()}
+            disabled={undoing}
+          >
+            ↩ Undo {lastSwipe.action === 'like' ? 'like' : 'skip'}
+          </button>
         </p>
       ) : null}
       {swipeError ? (
