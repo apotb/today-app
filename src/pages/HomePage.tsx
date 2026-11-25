@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { EventDetailsModal } from '../components/EventDetailsModal'
 import { SwipeCard } from '../components/SwipeCard'
@@ -14,6 +14,8 @@ import {
   onDiscoverySettingsChanged,
 } from '../lib/discoverySettings'
 import { TUTORIAL_SWIPE_KEY } from '../lib/onboardingStorage'
+import { VibeChips } from '../components/VibeChips'
+import { filterByVibes, getStoredVibes, saveStoredVibes, type VibeId } from '../lib/vibes'
 
 export function HomePage() {
   const { notifyFirstLike } = useNavigationHints()
@@ -25,6 +27,9 @@ export function HomePage() {
     () => localStorage.getItem(TUTORIAL_SWIPE_KEY) === '1',
   )
   const [detailEvent, setDetailEvent] = useState<EventItem | null>(null)
+  const [vibes, setVibes] = useState<VibeId[]>(getStoredVibes)
+  // "Tonight" is judged against the time the feed was loaded.
+  const [loadedAtMs, setLoadedAtMs] = useState(() => Date.now())
   const isDesktop = useIsDesktop()
 
   useEffect(() => {
@@ -50,6 +55,7 @@ export function HomePage() {
         settings.unit,
       )
       setEvents(list)
+      setLoadedAtMs(Date.now())
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load events.')
     } finally {
@@ -69,7 +75,16 @@ export function HomePage() {
     return () => window.removeEventListener(FEED_REFRESH_EVENT, onRefresh)
   }, [loadEvents])
 
-  const current = events[0]
+  const visibleEvents = useMemo(
+    () => filterByVibes(events, vibes, loadedAtMs),
+    [events, vibes, loadedAtMs],
+  )
+  const current = visibleEvents[0]
+
+  const changeVibes = (next: VibeId[]) => {
+    setVibes(next)
+    saveStoredVibes(next)
+  }
 
   const seriesDedupeKey = (e: EventItem) => {
     const sk = e.series_key?.trim()
@@ -90,11 +105,13 @@ export function HomePage() {
     setSwipeError('')
     if (direction === 'right') notifyFirstLike()
 
+    // Remove by id rather than position: with vibes on, the card shown isn't
+    // necessarily the first event in the full list.
     setEvents((prev) => {
-      const tail = prev.slice(1)
-      if (direction !== 'right') return tail
+      const rest = prev.filter((e) => e.id !== current.id)
+      if (direction !== 'right') return rest
       const likedKey = seriesDedupeKey(current)
-      return tail.filter((e) => seriesDedupeKey(e) !== likedKey)
+      return rest.filter((e) => seriesDedupeKey(e) !== likedKey)
     })
   }
 
@@ -127,6 +144,9 @@ export function HomePage() {
     <div className="page home-swipe-page">
       <h1>What&apos;s happening today?</h1>
       {showTutorial ? <SwipeTutorialOverlay onComplete={completeTutorial} /> : null}
+      {!showTutorial && events.length > 0 ? (
+        <VibeChips selected={vibes} onChange={changeVibes} />
+      ) : null}
       {!showTutorial && current ? (
         <p className="home-swipe-hint">
           Swipe up for details
@@ -150,7 +170,15 @@ export function HomePage() {
           />
         </div>
       ) : null}
-      {!showTutorial && !current ? (
+      {!showTutorial && !current && events.length > 0 ? (
+        <section className="panel home-empty-panel">
+          <p>Nothing left that matches these vibes. Try a different mix.</p>
+          <button type="button" className="btn btn-primary" onClick={() => changeVibes([])}>
+            Clear filters
+          </button>
+        </section>
+      ) : null}
+      {!showTutorial && events.length === 0 ? (
         <section className="panel home-empty-panel">
           <p>No events in your feed window. Try widening radius in Settings or refreshing.</p>
           <button type="button" className="btn btn-primary" onClick={() => void loadEvents()}>
