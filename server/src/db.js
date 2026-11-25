@@ -217,30 +217,12 @@ export const initDb = async () => {
     )
   `)
 
-  await run(
-    `DELETE FROM user_interactions
-     WHERE event_id IN (
-       SELECT id FROM events
-       WHERE id LIKE 'local-%'
-          OR id LIKE 'seed-%'
-          OR title LIKE '%AI Mereting%'
-     )`,
-  )
-  await run(
-    `DELETE FROM user_event_attendance
-     WHERE event_id IN (
-       SELECT id FROM events
-       WHERE id LIKE 'local-%'
-          OR id LIKE 'seed-%'
-          OR title LIKE '%AI Mereting%'
-     )`,
-  )
-  await run(
-    `DELETE FROM events
-     WHERE id LIKE 'local-%'
-        OR id LIKE 'seed-%'
-        OR title LIKE '%AI Mereting%'`,
-  )
+  // Sample events are recreated on every start so their times stay relative to "now".
+  // Remove the old copies (and any swipes on them) before re-seeding below.
+  const seedEventFilter = `SELECT id FROM events WHERE id LIKE 'seed-%'`
+  await run(`DELETE FROM user_interactions WHERE event_id IN (${seedEventFilter})`)
+  await run(`DELETE FROM user_event_attendance WHERE event_id IN (${seedEventFilter})`)
+  await run(`DELETE FROM events WHERE id IN (${seedEventFilter})`)
 
   // One-time cleanup: Google Places "events" were nearby venues with made-up start
   // times, and their photo URLs embedded the API key. Remove any still stored.

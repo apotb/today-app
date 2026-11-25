@@ -4,6 +4,8 @@ import cors from 'cors'
 import { z } from 'zod'
 import { all, get, initDb, run } from './db.js'
 import { fetchExternalEvents } from './eventsProvider.js'
+import { CATEGORY_TAGS } from './categoryTags.js'
+import { haversineMiles, toMiles } from './geo.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 4000
@@ -11,33 +13,9 @@ const port = Number(process.env.PORT) || 4000
 app.use(cors())
 app.use(express.json())
 
-const categories = [
-  'sports-fitness',
-  'arts-culture',
-  'music-nightlife',
-  'food-drink',
-  'volunteering-community',
-  'social-meetups',
-  'dating-singles',
-  'family-friendly',
-  'outdoor-nature',
-  'wellness-self-care',
-  'learning-workshops',
-  'networking-professional',
-  'entrepreneurship-startups',
-  'finance-business',
-  'gaming-esports',
-  'tech-ai',
-  'film-media',
-  'fashion-popups',
-  'comedy-improv',
-  'festivals-fairs',
-  'holidays-seasonal',
-  'markets',
-  'religious-spiritual',
-  'activism-politics',
-  'travel-exploration',
-]
+// Single source of truth for category ids on the server (must match CATEGORY_OPTIONS in
+// src/types/models.ts on the frontend).
+const categories = Object.keys(CATEGORY_TAGS)
 
 const preferenceSchema = z.object({
   sessionId: z.string().min(1),
@@ -116,10 +94,6 @@ const getMyEventsFetchWindow = () => {
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
-const KM_PER_MILE = 1.609344
-
-const toMiles = (radius, unit) => (unit === 'km' ? radius / KM_PER_MILE : radius)
-
 /**
  * Removes external events that have already ended and that no user has swiped on
  * or marked attendance for. Events with interactions are kept so My Events never
@@ -134,19 +108,6 @@ const pruneEndedEvents = () =>
        AND id NOT IN (SELECT event_id FROM user_event_attendance)`,
     [new Date().toISOString()],
   )
-
-const haversineMiles = (lat1, lon1, lat2, lon2) => {
-  if ([lat1, lon1, lat2, lon2].some((v) => v == null || Number.isNaN(Number(v)))) return null
-  const R = 3958.8
-  const toRad = (d) => (Number(d) * Math.PI) / 180
-  const dLat = toRad(lat2 - lat1)
-  const dLon = toRad(lon2 - lon1)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
@@ -562,28 +523,23 @@ app.get('/api/my-events', async (req, res, next) => {
       return
     }
     const { from, to } = getMyEventsFetchWindow()
+    // One query: saved events plus this user's attendance status (previously one extra
+    // query per event).
     const events = await all(
-      `SELECT DISTINCT e.*
-       FROM user_interactions ui
-       JOIN events e ON e.id = ui.event_id
-       WHERE ui.session_id = ?
-         AND ui.action IN ('like', 'attended')
+      `SELECT e.*, a.status AS attendance_status
+       FROM events e
+       LEFT JOIN user_event_attendance a
+         ON a.event_id = e.id AND a.session_id = ?
+       WHERE e.id IN (
+           SELECT event_id FROM user_interactions
+           WHERE session_id = ? AND action IN ('like', 'attended')
+         )
          AND (e.id LIKE 'evt_%' OR e.id LIKE 'seed-%')
          AND e.starts_at BETWEEN ? AND ?
        ORDER BY e.starts_at ASC`,
-      [sessionId, from, to],
+      [sessionId, sessionId, from, to],
     )
-    const withAttendance = await Promise.all(
-      events.map(async (event) => {
-        const attendance = await get(
-          `SELECT status FROM user_event_attendance
-           WHERE session_id = ? AND event_id = ?`,
-          [sessionId, event.id],
-        )
-        return { ...event, attendance_status: attendance?.status ?? null }
-      }),
-    )
-    res.json({ events: withAttendance })
+    res.json({ events })
   } catch (error) {
     next(error)
   }

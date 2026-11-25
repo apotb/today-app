@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { tagsForCategory } from './categoryTags.js'
 import { stripDateTimeFromTitle } from './titleClean.js'
+import { haversineMiles, METERS_PER_MILE } from './geo.js'
 
 const DATE_TIME_PATTERNS = [
   /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
@@ -40,18 +41,6 @@ const timeBucket = (iso) => Math.floor(new Date(iso).getTime() / (30 * 60 * 1000
 
 const dedupeKey = (normTitle, venueKey, startIso) =>
   `${normTitle}|${venueKey}|${timeBucket(startIso)}`
-
-const haversineMeters = (lat1, lon1, lat2, lon2) => {
-  if ([lat1, lon1, lat2, lon2].some((v) => v == null || Number.isNaN(v))) return Infinity
-  const R = 6371000
-  const toRad = (d) => (d * Math.PI) / 180
-  const dLat = toRad(lat2 - lat1)
-  const dLon = toRad(lon2 - lon1)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
 
 const titleSimilar = (a, b) => {
   if (a === b) return true
@@ -135,7 +124,8 @@ export function aggregateAndDedupeEvents(rawEvents) {
       if (consumed.has(j)) continue
       const o = merged[j]
       const dt = Math.abs(new Date(acc.startsAt) - new Date(o.startsAt))
-      const dist = haversineMeters(acc.latitude, acc.longitude, o.latitude, o.longitude)
+      const miles = haversineMiles(acc.latitude, acc.longitude, o.latitude, o.longitude)
+      const dist = miles == null ? Infinity : miles * METERS_PER_MILE
       if (titleSimilar(acc.normTitle, o.normTitle) && dt < 2 * 60 * 60 * 1000 && dist < 800) {
         acc = mergePair(acc, o)
         consumed.add(j)
