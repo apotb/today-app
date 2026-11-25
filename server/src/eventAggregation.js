@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto'
 import { tagsForCategory } from './categoryTags.js'
-import { stripDateTimeFromTitle } from './titleClean.js'
+import {
+  professionalizeDescription,
+  professionalizeTitle,
+} from './eventPresentation.js'
 
 const DATE_TIME_PATTERNS = [
   /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
@@ -72,20 +75,30 @@ const providerRank = (p) => {
   return 0
 }
 
+const mergeCost = (a, b) => {
+  const nums = [a, b].filter((x) => typeof x === 'number' && !Number.isNaN(x))
+  const paid = nums.filter((x) => x > 0)
+  if (paid.length) return Math.min(...paid)
+  if (nums.includes(0)) return 0
+  return null
+}
+
 function mergePair(a, b) {
   const best = providerRank(a.provider) >= providerRank(b.provider) ? a : b
   const other = best === a ? b : a
   const tags = Array.from(new Set([...(best.tags ?? []), ...(other.tags ?? [])]))
+  const longerDesc =
+    (best.description?.length ?? 0) >= (other.description?.length ?? 0)
+      ? best.description
+      : other.description
   return {
     ...best,
-    title: stripDateTimeFromTitle(
+    title: professionalizeTitle(
       best.title.length >= other.title.length ? best.title : other.title,
     ),
-    description: (best.description?.length ?? 0) >= (other.description?.length ?? 0)
-      ? best.description
-      : other.description,
+    description: professionalizeDescription(longerDesc ?? ''),
     imageUrl: best.imageUrl || other.imageUrl,
-    cost: best.cost ?? other.cost,
+    cost: mergeCost(best.cost, other.cost),
     sourceUrl: best.sourceUrl || other.sourceUrl,
     latitude: best.latitude ?? other.latitude,
     longitude: best.longitude ?? other.longitude,
@@ -201,7 +214,7 @@ export function aggregateAndDedupeEvents(rawEvents) {
 
     return {
       id: canonicalId,
-      title: stripDateTimeFromTitle(e.title),
+      title: professionalizeTitle(e.title),
       description: e.description,
       startsAt: e.startsAt,
       endsAt: e.endsAt,

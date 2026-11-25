@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { stripDateTimeFromTitle } from './titleClean.js'
+import {
+  eventbriteCostFromApi,
+  professionalizeDescription,
+  professionalizeTitle,
+} from './eventPresentation.js'
 
 const mapCategory = (raw = '') => {
   const value = raw.toLowerCase()
@@ -16,21 +20,6 @@ const mapCategory = (raw = '') => {
   if (value.includes('outdoor') || value.includes('nature')) return 'outdoor-nature'
   if (value.includes('wellness') || value.includes('yoga')) return 'wellness-self-care'
   return 'social-meetups'
-}
-
-const cleanTitle = (value = '') =>
-  String(value)
-    .replace(/\s+/g, ' ')
-    .replace(/[|•]+/g, ' ')
-    .replace(/[_~`^*]+/g, ' ')
-    .replace(/[\r\n]+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-
-const cleanDescription = (value = '') => {
-  const trimmed = String(value).replace(/\s+/g, ' ').trim()
-  if (!trimmed) return 'Event details will be available soon.'
-  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`
 }
 
 const normalizeEventbrite = (event) => {
@@ -56,11 +45,11 @@ const normalizeEventbrite = (event) => {
 
   return {
     id: `eb_${event.id ?? randomUUID()}`,
-    title: stripDateTimeFromTitle(cleanTitle(event?.name?.text ?? 'Local Event')),
-    description: cleanDescription(event?.description?.text ?? ''),
+    title: professionalizeTitle(event?.name?.text ?? 'Local Event'),
+    description: professionalizeDescription(event?.description?.text ?? ''),
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(end).toISOString(),
-    cost: event?.is_free ? 0 : 0,
+    cost: eventbriteCostFromApi(event),
     imageUrl: image ?? null,
     category: mapCategory(categoryRaw),
     location: venueName && venueAddress ? `${venueName} · ${venueAddress}` : venueName ?? 'Local Venue',
@@ -84,7 +73,7 @@ export async function fetchEventbriteEvents({ location = {}, radius = 25, unit =
   const params = new URLSearchParams({
     'start_date.range_start': now.toISOString(),
     'start_date.range_end': end.toISOString(),
-    expand: 'venue,category,subcategory,format',
+    expand: 'venue,category,subcategory,format,ticket_availability',
     sort_by: 'date',
   })
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { motion, useAnimation, useMotionValue, useTransform, type PanInfo } from 'framer-motion'
 import type { EventItem } from '../types/models'
 import { formatDateTime12h } from '../lib/format'
+import { formatEventPrice } from '../lib/formatEventPrice'
 
 type Props = {
   event: EventItem
@@ -11,8 +12,6 @@ type Props = {
   /** Fills viewport height on Home (mobile deck layout). */
   deckLayout?: boolean
 }
-
-const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'Free')
 
 const SWIPE_THRESHOLD = 120
 const SWIPE_UP_THRESHOLD = 72
@@ -190,7 +189,7 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
         <h2 className="card-title">{event.title}</h2>
         <p>{formatDateTime12h(event.starts_at)}</p>
         <p>{event.location}</p>
-        <p>{formatPrice(event.cost)}</p>
+        <p>{formatEventPrice(event.cost)}</p>
         <p className="description description-preview">{event.description}</p>
       </div>
     </motion.article>

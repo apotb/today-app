@@ -454,12 +454,12 @@ app.get('/api/events/discover', async (req, res, next) => {
       if (b.preferenceScore !== a.preferenceScore) {
         return b.preferenceScore - a.preferenceScore
       }
-      const da = a.distanceMiles ?? 1e9
-      const db = b.distanceMiles ?? 1e9
-      if (da !== db) return da - db
       const ta = new Date(a.starts_at).getTime()
       const tb = new Date(b.starts_at).getTime()
       if (ta !== tb) return ta - tb
+      const da = a.distanceMiles ?? 1e9
+      const db = b.distanceMiles ?? 1e9
+      if (da !== db) return da - db
       return a.tieBreak - b.tieBreak
     })
 

@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { stripDateTimeFromTitle } from './titleClean.js'
+import {
+  pickBestGooglePhoto,
+  professionalizeDescription,
+  professionalizeTitle,
+} from './eventPresentation.js'
 
 const mapCategoryFromTypes = (types = []) => {
   const t = types.join(' ').toLowerCase()
@@ -11,12 +15,6 @@ const mapCategoryFromTypes = (types = []) => {
   if (t.includes('park')) return 'outdoor-nature'
   return 'social-meetups'
 }
-
-const cleanTitle = (value = '') =>
-  String(value)
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase())
 
 export async function fetchGooglePlacesEvents({ location = {}, radius = 25, unit = 'miles' } = {}) {
   const key = process.env.GOOGLE_PLACES_API_KEY
@@ -45,15 +43,17 @@ export async function fetchGooglePlacesEvents({ location = {}, radius = 25, unit
     return (body.results ?? []).slice(0, 25).map((place, i) => {
       const start = new Date(now + (2 + i) * 60 * 60 * 1000)
       const end = new Date(start.getTime() + 2 * 60 * 60 * 1000)
-      const photoRef = place.photos?.[0]?.photo_reference
+      const photoRef = pickBestGooglePhoto(place.photos)
       const imageUrl = photoRef
         ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photoreference=${photoRef}&key=${key}`
         : null
 
+      const placeLine = place.vicinity ?? place.formatted_address ?? 'your area'
+
       return {
         id: `gp_${place.place_id ?? randomUUID()}`,
-        title: stripDateTimeFromTitle(cleanTitle(place.name ?? 'Local spot')),
-        description: `Nearby venue: ${place.vicinity ?? place.formatted_address ?? 'your area'}.`,
+        title: professionalizeTitle(place.name ?? 'Local spot'),
+        description: professionalizeDescription(`Nearby venue: ${placeLine}.`),
         startsAt: start.toISOString(),
         endsAt: end.toISOString(),
         cost: place.price_level != null ? Number(place.price_level) * 8 : null,

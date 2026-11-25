@@ -234,7 +234,7 @@ export const initDb = async () => {
   )
 
   const row = await get('SELECT COUNT(*) as count FROM events')
-  if (row?.count === 0) {
+  if (row?.count === 0 && process.env.NODE_ENV !== 'production') {
     for (const event of seedEvents) {
       await run(
         `INSERT INTO events (

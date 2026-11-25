@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto'
 import { fetchEventbriteEvents } from './eventbriteProvider.js'
 import { fetchGooglePlacesEvents } from './googlePlacesEvents.js'
 import { aggregateAndDedupeEvents } from './eventAggregation.js'
-import { stripDateTimeFromTitle } from './titleClean.js'
+import {
+  pickBestTicketmasterImage,
+  professionalizeDescription,
+  professionalizeTitle,
+  ticketmasterCostFromApi,
+} from './eventPresentation.js'
 
 const FEED_RANGE_MS = 48 * 60 * 60 * 1000
 
@@ -41,28 +46,13 @@ const mapCategory = (raw = '') => {
   return 'social-meetups'
 }
 
-const cleanTitle = (value = '') =>
-  String(value)
-    .replace(/\s+/g, ' ')
-    .replace(/[|•]+/g, ' ')
-    .replace(/[_~`^*]+/g, ' ')
-    .replace(/[\r\n]+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-
-const cleanDescription = (value = '') => {
-  const trimmed = String(value).replace(/\s+/g, ' ').trim()
-  if (!trimmed) return 'Event details will be available soon.'
-  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`
-}
-
 const normalizeTicketmasterEvent = (event) => {
   const start = ticketmasterStartIso(event)
   if (!start) return null
   const venue = event?._embedded?.venues?.[0]
   const classification = event?.classifications?.[0]
   const categoryRaw = classification?.segment?.name ?? classification?.genre?.name ?? ''
-  const image = event?.images?.find((img) => img.ratio === '16_9')?.url ?? event?.images?.[0]?.url
+  const image = pickBestTicketmasterImage(event?.images)
   const venueAddress = [venue?.address?.line1, venue?.city?.name, venue?.state?.stateCode]
     .filter(Boolean)
     .join(', ')
@@ -71,13 +61,15 @@ const normalizeTicketmasterEvent = (event) => {
   const lat = venue?.location?.latitude != null ? Number(venue.location.latitude) : null
   const lng = venue?.location?.longitude != null ? Number(venue.location.longitude) : null
 
+  const info = [event?.info, event?.pleaseNote].filter(Boolean).join(' ').trim()
+
   return {
     id: `tm_${event.id ?? randomUUID()}`,
-    title: stripDateTimeFromTitle(cleanTitle(event.name ?? 'Local Event')),
-    description: cleanDescription(event.info ?? event.pleaseNote ?? ''),
+    title: professionalizeTitle(event.name ?? 'Local Event'),
+    description: professionalizeDescription(info),
     startsAt: start,
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
-    cost: event?.priceRanges?.[0]?.min ?? 0,
+    cost: ticketmasterCostFromApi(event),
     imageUrl: image ?? null,
     category: mapCategory(categoryRaw),
     location: venue?.name ?? 'Local Venue',

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import type { EventItem } from '../types/models'
 import { formatDateTime12h } from '../lib/format'
+import { formatEventPrice } from '../lib/formatEventPrice'
 
 const DEMO_EVENT: EventItem = {
   id: 'tutorial-demo',
@@ -63,8 +64,6 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
     }
   }, [controls])
 
-  const formatPrice = (cost: number | null) => (cost && cost > 0 ? `$${cost}` : 'Free')
-
   return (
     <div
       className="tutorial-overlay"
@@ -101,7 +100,7 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
             <h2 className="card-title">{DEMO_EVENT.title}</h2>
             <p>{formatDateTime12h(DEMO_EVENT.starts_at)}</p>
             <p>{DEMO_EVENT.location}</p>
-            <p>{formatPrice(DEMO_EVENT.cost)}</p>
+            <p>{formatEventPrice(DEMO_EVENT.cost)}</p>
             <p className="description description-preview">{DEMO_EVENT.description}</p>
           </div>
         </motion.article>

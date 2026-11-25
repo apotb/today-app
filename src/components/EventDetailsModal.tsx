@@ -1,5 +1,6 @@
 import type { EventItem } from '../types/models'
 import { formatDateTime12h } from '../lib/format'
+import { formatEventPrice } from '../lib/formatEventPrice'
 import { downloadIcsFile, googleCalendarUrl } from '../lib/calendarLinks'
 
 type Props = {
@@ -26,7 +27,7 @@ export function EventDetailsModal({ event, onClose }: Props) {
             <strong>Address:</strong> {event.address ?? event.location}
           </p>
           <p>
-            <strong>Price:</strong> {event.cost && event.cost > 0 ? `$${event.cost}` : 'Free'}
+            <strong>Price:</strong> {formatEventPrice(event.cost)}
           </p>
         </div>
         <p>{event.description}</p>
