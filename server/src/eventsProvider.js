@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
 import { fetchEventbriteEvents } from './eventbriteProvider.js'
-import { fetchGooglePlacesEvents } from './googlePlacesEvents.js'
 import { aggregateAndDedupeEvents } from './eventAggregation.js'
 import { stripDateTimeFromTitle } from './titleClean.js'
 
@@ -166,13 +165,12 @@ export const fetchExternalEvents = async (options = {}) => {
     return []
   }
 
-  const [ticketmaster, eventbrite, googlePlaces] = await Promise.all([
+  const [ticketmaster, eventbrite] = await Promise.all([
     fetchTicketmasterEvents(location, radius, unit),
     fetchEventbriteEvents({ location, radius, unit }),
-    fetchGooglePlacesEvents({ location, radius, unit }),
   ])
 
-  let merged = uniqEvents([...ticketmaster, ...eventbrite, ...googlePlaces])
+  let merged = uniqEvents([...ticketmaster, ...eventbrite])
   if (merged.length === 0) {
     return []
   }

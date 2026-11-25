@@ -56,7 +56,7 @@ Base URL: `http://localhost:4000/api`
 - `GET /health`
   - Health check.
 - `GET /debug/providers`
-  - Shows whether Ticketmaster/Eventbrite/Google Places keys are loaded in the server process.
+  - Shows whether Ticketmaster/Eventbrite keys are loaded in the server process.
 - `GET /preferences/:sessionId`
   - Fetch saved categories for a user session.
 - `POST /preferences`
@@ -164,7 +164,6 @@ curl -X POST http://localhost:4000/api/interactions \
 The app supports:
 - `TICKETMASTER_API_KEY`
 - `EVENTBRITE_API_TOKEN`
-- `GOOGLE_PLACES_API_KEY` (optional enrichment for address/image quality)
 
 ### Recommended local setup (no Git commit)
 
@@ -179,7 +178,6 @@ The app supports:
 ```powershell
 $env:TICKETMASTER_API_KEY="your_ticketmaster_key"
 $env:EVENTBRITE_API_TOKEN="your_eventbrite_token"
-$env:GOOGLE_PLACES_API_KEY="your_google_places_key"
 ```
 
 Without keys, the app gracefully falls back to local seeded events.
@@ -231,7 +229,7 @@ The Vercel project is only the static frontend. The API must run on a Node host 
 1. Push this repo to GitHub (if it is not already).
 2. In [Render](https://render.com): **New → Blueprint**, connect the repo, and apply `render.yaml`.
 3. After the service is created, open it → **Environment** → add (optional but needed for real event data):
-   - `TICKETMASTER_API_KEY`, `EVENTBRITE_API_TOKEN`, `GOOGLE_PLACES_API_KEY` (same as `.env.local` locally).
+   - `TICKETMASTER_API_KEY`, `EVENTBRITE_API_TOKEN` (same as `.env.local` locally).
 4. Wait for deploy; open `https://<your-service>.onrender.com/api/health` and confirm JSON `{"ok":true}`.
 5. In **Vercel** → your project → **Environment variables** → add **`VITE_API_BASE`** = `https://<your-service>.onrender.com/api` (your real host).
 6. **Redeploy** the Vercel app so the build picks up `VITE_API_BASE`.

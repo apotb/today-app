@@ -156,7 +156,6 @@ app.get('/api/debug/providers', (_req, res) => {
   res.json({
     ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
     eventbriteConfigured: Boolean(process.env.EVENTBRITE_API_TOKEN),
-    googlePlacesConfigured: Boolean(process.env.GOOGLE_PLACES_API_KEY),
   })
 })
 
@@ -364,7 +363,6 @@ app.post('/api/events/sync', async (req, res, next) => {
       providers: {
         ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
         eventbriteConfigured: Boolean(process.env.EVENTBRITE_API_TOKEN),
-        googlePlacesConfigured: Boolean(process.env.GOOGLE_PLACES_API_KEY),
       },
     })
   } catch (error) {

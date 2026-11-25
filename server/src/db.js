@@ -242,6 +242,16 @@ export const initDb = async () => {
         OR title LIKE '%AI Mereting%'`,
   )
 
+  // One-time cleanup: Google Places "events" were nearby venues with made-up start
+  // times, and their photo URLs embedded the API key. Remove any still stored.
+  const googlePlacesEventFilter = `
+    SELECT id FROM events
+    WHERE image_url LIKE '%maps.googleapis.com/maps/api/place/photo%'
+       OR source_url LIKE '%google.com/maps/search/%query_place_id%'`
+  await run(`DELETE FROM user_interactions WHERE event_id IN (${googlePlacesEventFilter})`)
+  await run(`DELETE FROM user_event_attendance WHERE event_id IN (${googlePlacesEventFilter})`)
+  await run(`DELETE FROM events WHERE id IN (${googlePlacesEventFilter})`)
+
   const row = await get('SELECT COUNT(*) as count FROM events')
   if (row?.count === 0) {
     for (const event of seedEvents) {
