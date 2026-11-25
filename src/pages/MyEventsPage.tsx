@@ -4,11 +4,6 @@ import { EventCalendar } from '../components/EventCalendar'
 import { EventDetailsModal } from '../components/EventDetailsModal'
 import { getSessionId } from '../lib/session'
 import type { EventItem } from '../types/models'
-import { getStoredLocation } from '../lib/location'
-import {
-  getStoredDiscoverySettings,
-  onDiscoverySettingsChanged,
-} from '../lib/discoverySettings'
 import { maybeNotifyUpcoming } from '../lib/notifications'
 
 /** Start of today (local) for a wall-clock instant */
@@ -36,14 +31,7 @@ export function MyEventsPage() {
     setLoading(true)
     setError('')
     try {
-      const settings = getStoredDiscoverySettings()
-      const loc = getStoredLocation()
-      if (!loc) {
-        setError('Allow location in Settings to load your events.')
-        setEvents([])
-        return
-      }
-      await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit)
+      // Saved events are kept on the server, so no provider sync (or location) is needed here.
       const response = await api.getMyEvents(getSessionId())
       setEvents(response.events)
       setNowMs(Date.now())
@@ -62,8 +50,6 @@ export function MyEventsPage() {
     return () => window.clearTimeout(id)
   }, [refreshEvents])
 
-  useEffect(() => onDiscoverySettingsChanged(() => void refreshEvents()), [refreshEvents])
-
   const upcoming = useMemo(() => {
     const endExclusive = startOfDayAfterMs(nowMs, 3)
     return events.filter((event) => {
@@ -79,8 +65,7 @@ export function MyEventsPage() {
         <div className="events-loading events-loading-full" role="status">
           <div className="spinner spinner-lg" aria-hidden />
           <p className="events-loading-title">Loading your events…</p>
-          <p className="events-loading-sub">Syncing with the server</p>
-        </div>
+                  </div>
       </div>
     )
   }

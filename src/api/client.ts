@@ -62,12 +62,6 @@ export const api = {
       body: JSON.stringify({ sessionId, answers }),
     }),
 
-  importLocalEvents: (location: string) =>
-    request<{ success: boolean; imported: number }>('/events/import-local', {
-      method: 'POST',
-      body: JSON.stringify({ location }),
-    }),
-
   syncEvents: (
     sessionId: string,
     location: StoredLocation | null,

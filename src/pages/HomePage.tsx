@@ -20,6 +20,7 @@ export function HomePage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [swipeError, setSwipeError] = useState('')
   const [tutorialDismissed, setTutorialDismissed] = useState(
     () => localStorage.getItem(TUTORIAL_SWIPE_KEY) === '1',
   )
@@ -34,6 +35,7 @@ export function HomePage() {
   const loadEvents = useCallback(async () => {
     setLoading(true)
     setError('')
+    setSwipeError('')
     try {
       const settings = getStoredDiscoverySettings()
       const loc = getStoredLocation()
@@ -78,7 +80,14 @@ export function HomePage() {
   const swipe = async (direction: 'left' | 'right') => {
     if (!current) return
     const action = direction === 'right' ? 'like' : 'dislike'
-    await api.submitInteraction(getSessionId(), current.id, action)
+    try {
+      await api.submitInteraction(getSessionId(), current.id, action)
+    } catch (e) {
+      setSwipeError("Couldn't save that swipe. Check your connection and try again.")
+      // Rethrow so SwipeCard animates the card back into place.
+      throw e
+    }
+    setSwipeError('')
     if (direction === 'right') notifyFirstLike()
 
     setEvents((prev) => {
@@ -122,6 +131,11 @@ export function HomePage() {
         <p className="home-swipe-hint">
           Swipe up for details
           {isDesktop ? ' · Use ↑ ← →' : ''}
+        </p>
+      ) : null}
+      {swipeError ? (
+        <p className="error" role="alert">
+          {swipeError}
         </p>
       ) : null}
       {!showTutorial && current ? (
