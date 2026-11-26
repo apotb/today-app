@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   getStoredLocation,
   requestBrowserLocation,
@@ -22,11 +22,6 @@ export function SettingsPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [feedRefreshing, setFeedRefreshing] = useState(false)
-
-  useEffect(() => {
-    document.documentElement.classList.add('page-settings')
-    return () => document.documentElement.classList.remove('page-settings')
-  }, [])
 
   const saveRadius = () => {
     saveDiscoverySettings({ radius, unit })
