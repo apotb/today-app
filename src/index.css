@@ -349,20 +349,6 @@ button.tutorial-dismiss {
   margin-bottom: 18px;
 }
 
-.quiz-attend-label {
-  margin: 0 0 6px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #506080;
-}
-
-.quiz-question-heading {
-  margin: 0 0 20px;
-  font-size: 1.35rem;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
 .panel {
   background: #fff;
   border-radius: 16px;
@@ -968,18 +954,6 @@ button.tutorial-dismiss {
 .location-step .zip-inline .input {
   flex: 1 1 140px;
   min-width: 140px;
-}
-
-.stepper {
-  color: #007400;
-  font-weight: 700;
-}
-
-.question-actions {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
 }
 
 .large {
@@ -1706,10 +1680,6 @@ button.card-details-btn:hover {
 }
 
 @media (max-width: 760px) {
-  .question-actions {
-    grid-template-columns: 1fr;
-  }
-
   .attendance-actions {
     flex-direction: column;
   }

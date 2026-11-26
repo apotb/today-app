@@ -1,4 +1,3 @@
-import type { AnswerSoFar } from '../lib/questionPool'
 import type { EventCategory, EventItem } from '../types/models'
 import type { StoredLocation } from '../lib/location'
 import type { DistanceUnit } from '../lib/discoverySettings'
@@ -54,12 +53,6 @@ export const api = {
     request<{ success: boolean }>('/preferences', {
       method: 'POST',
       body: JSON.stringify({ sessionId, categories }),
-    }),
-
-  saveOnboardingResponses: (sessionId: string, answers: AnswerSoFar[]) =>
-    request<{ success: boolean }>('/onboarding/responses', {
-      method: 'POST',
-      body: JSON.stringify({ sessionId, answers }),
     }),
 
   syncEvents: (

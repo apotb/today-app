@@ -4,8 +4,8 @@ Today is a full-stack local event discovery app with a Tinder-style swipe interf
 
 ## How it works
 
-1. **Onboarding:** the user allows location, picks interest categories, and answers 10 quick yes/no questions.
-2. **Home:** a swipe deck of events in the next 48 hours within the user's radius. Swipe right to save, left to skip, up for details.
+1. **Onboarding:** the user allows location and picks interest categories.
+2. **Home:** a swipe deck of events in the next 48 hours within the user's radius. Swipe right to save, left to skip, up for details. Each swipe updates the ranking and reorders the cards still in the deck.
 3. **My Events:** an hour-by-hour calendar of saved events for the next 48 hours. Tap an event for details and add-to-calendar links, or its ✕ to remove it (this undoes the like, so the event returns to the Home deck).
 4. **Settings:** change location, distance unit (miles or km), radius, and force a fresh event refresh.
 
@@ -31,11 +31,11 @@ There are no accounts yet. Each browser gets a random session id stored in `loca
 Events are sorted by a preference score built from:
 
 - the categories picked during onboarding (ranked by order picked)
-- yes/no answers from the onboarding questions, by category and by tag
-- swipe history: likes add, dislikes subtract
+- swipe history on that category: likes add, dislikes subtract
 - attendance: attended adds, missed subtracts
+- taste learned from swipes, within a category: genre, subgenre, time of day (morning, afternoon, evening, night), and price (free, under $25, under $75, $75+)
 
-Ties are broken by distance, then start time.
+A like adds 1 to each of that event's taste signals, a dislike subtracts 1, and undo reverses it. Marking attended adds 2; missed subtracts 1. The same signals on later events pick up that score. Ties are broken by start time, then distance.
 
 ## Folder structure
 
@@ -47,6 +47,7 @@ today-app/
     eventsProvider.js    Ticketmaster fetch + normalization
     eventAggregation.js  Merge/dedupe across sources, stable ids, image fallbacks
     categoryTags.js      Category ids and their default tags
+    taste.js             Genre, time, and price signals learned from swipes
     geo.js               Distance helpers
     titleClean.js        Strips dates/times out of event titles
     env.js               Loads .env.local for local development
@@ -54,7 +55,7 @@ today-app/
     api/client.ts        Typed API client
     pages/               Home, MyEvents, Onboarding, Settings
     components/          SwipeCard, EventExpandPage, EventCalendar, PreferenceQuiz, Layout, ...
-    lib/                 Session, location, settings, formatting, calendar links, quiz questions
+    lib/                 Session, location, settings, formatting, calendar links
     types/models.ts      Shared frontend types and category list
     assets/logo.png
   public/                favicon and home-screen icon
@@ -72,7 +73,6 @@ Base URL locally: `http://localhost:4000/api`
 | `GET /debug/providers` | Shows whether the Ticketmaster key is loaded. |
 | `GET /preferences/:sessionId` | Saved categories for a session. |
 | `POST /preferences` | Save onboarding categories: `{ sessionId, categories }`. |
-| `POST /onboarding/responses` | Save yes/no quiz answers: `{ sessionId, answers }`. |
 | `POST /events/sync` | Fetch events for an area: `{ sessionId, location: { latitude, longitude }, radius, unit, force? }`. Returns `cached: true` when the area was synced in the last 30 minutes; `force: true` skips the cache. |
 | `GET /events/discover` | Ranked feed. Query: `sessionId`, `latitude`, `longitude`, `radius`, `unit` (`miles` or `km`, default 25 miles). |
 | `POST /interactions` | Save a swipe: `{ sessionId, eventId, action: "like" \| "dislike" }`. |
@@ -111,10 +111,10 @@ curl -X POST http://localhost:4000/api/attendance \
 
 | Table | Holds |
 |---|---|
-| `events` | All synced events, shared by every user: id, title, description, `starts_at`, `ends_at`, `cost` (null = price not listed), `image_url`, category, location, address, latitude, longitude, tags (JSON), `source_url`, `series_key`. |
+| `events` | All synced events, shared by every user: id, title, description, `starts_at`, `ends_at`, `cost` (null = price not listed), `image_url`, category, location, address, latitude, longitude, tags (JSON, including `genre:`, `subgenre:`, `time:`, and `price:` signals), `source_url`, `series_key`. |
 | `user_preferences` | Categories picked at onboarding, with a weight per session. |
-| `user_questionnaire_answers` | Each yes/no quiz answer with its categories and tags. |
-| `user_tag_scores` | Per-session tag scores derived from quiz answers. |
+| `user_questionnaire_answers` | Leftover from the removed onboarding quiz. No longer written or read. |
+| `user_tag_scores` | Per-session scores for genre, time-of-day, and price signals, updated by swipes and attendance. |
 | `user_interactions` | Swipes (`like`, `dislike`) and `attended`, unique per session/event/action. |
 | `user_event_attendance` | Attendance status (`attended` / `missed`) per session and event. |
 | `sync_areas` | Last sync time per area, for the 30-minute cache. |

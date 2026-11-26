@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import { PreferenceQuiz } from '../components/PreferenceQuiz'
 import { getSessionId } from '../lib/session'
-import type { AnswerSoFar } from '../lib/questionPool'
 import type { EventCategory } from '../types/models'
 import { getStoredDiscoverySettings } from '../lib/discoverySettings'
 import {
@@ -22,7 +21,7 @@ export function OnboardingPage({ onComplete }: Props) {
   const [location, setLocation] = useState<StoredLocation | null>(getStoredLocation())
   const [locationError, setLocationError] = useState('')
 
-  const savePreferences = async (categories: EventCategory[], answers: AnswerSoFar[]) => {
+  const savePreferences = async (categories: EventCategory[]) => {
     const sessionId = getSessionId()
     const settings = getStoredDiscoverySettings()
     const loc = location
@@ -30,7 +29,6 @@ export function OnboardingPage({ onComplete }: Props) {
       throw new Error('Location is required.')
     }
     await api.savePreferences(sessionId, categories)
-    await api.saveOnboardingResponses(sessionId, answers)
     await api.syncEvents(sessionId, loc, settings.radius, settings.unit)
     onComplete()
     navigate('/')

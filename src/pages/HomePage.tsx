@@ -17,6 +17,12 @@ import { TUTORIAL_SWIPE_KEY } from '../lib/onboardingStorage'
 import { VibeChips } from '../components/VibeChips'
 import { filterByVibes, getStoredVibes, saveStoredVibes, type VibeId } from '../lib/vibes'
 
+const seriesDedupeKey = (event: EventItem) => {
+  const seriesKey = event.series_key?.trim()
+  if (seriesKey) return `s:${seriesKey}`
+  return `f:${event.title.trim().toLowerCase()}|${event.location.trim().toLowerCase()}`
+}
+
 export function HomePage() {
   const { notifyFirstLike, setSwipeTutorialActive } = useNavigationHints()
   const [events, setEvents] = useState<EventItem[]>([])
@@ -39,6 +45,11 @@ export function HomePage() {
   } | null>(null)
   const [undoing, setUndoing] = useState(false)
   const isDesktop = useIsDesktop()
+  // Bumps on every deck load, swipe, and undo so a slow discover response cannot
+  // overwrite a newer order.
+  const rankGen = useRef(0)
+  // Other showtimes of a liked series stay hidden until that like is undone or the deck reloads.
+  const hiddenSeries = useRef(new Set<string>())
 
   useEffect(() => {
     document.documentElement.classList.add('page-home')
@@ -46,6 +57,7 @@ export function HomePage() {
   }, [])
 
   const loadEvents = useCallback(async () => {
+    const gen = ++rankGen.current
     setLoading(true)
     setError('')
     setSwipeError('')
@@ -63,6 +75,8 @@ export function HomePage() {
         settings.radius,
         settings.unit,
       )
+      if (gen !== rankGen.current) return
+      hiddenSeries.current = new Set()
       setEvents(list)
       setLoadedAtMs(Date.now())
     } catch (e) {
@@ -95,10 +109,29 @@ export function HomePage() {
     saveStoredVibes(next)
   }
 
-  const seriesDedupeKey = (e: EventItem) => {
-    const sk = e.series_key?.trim()
-    if (sk) return `s:${sk}`
-    return `f:${e.title.trim().toLowerCase()}|${e.location.trim().toLowerCase()}`
+  const rerankRemaining = async (pinFront: EventItem[] | null) => {
+    const gen = ++rankGen.current
+    try {
+      const settings = getStoredDiscoverySettings()
+      const loc = getStoredLocation()
+      if (!loc) return
+      const { events: list } = await api.discoverEvents(
+        getSessionId(),
+        loc,
+        settings.radius,
+        settings.unit,
+      )
+      if (gen !== rankGen.current) return
+      const ranked = list.filter((event) => !hiddenSeries.current.has(seriesDedupeKey(event)))
+      if (pinFront?.length) {
+        const pinIds = new Set(pinFront.map((event) => event.id))
+        setEvents([...pinFront, ...ranked.filter((event) => !pinIds.has(event.id))])
+      } else {
+        setEvents(ranked)
+      }
+    } catch {
+      // The swipe is already saved. Keep the optimistic order if this refresh fails.
+    }
   }
 
   const measureCard = (): ExpandOrigin | null => {
@@ -135,6 +168,7 @@ export function HomePage() {
     // necessarily the first event in the full list. A like also removes other
     // showtimes of the same series.
     const likedKey = direction === 'right' ? seriesDedupeKey(target) : null
+    if (likedKey) hiddenSeries.current.add(likedKey)
     const removed = [
       target,
       ...events.filter((e) => e.id !== target.id && likedKey && seriesDedupeKey(e) === likedKey),
@@ -142,6 +176,7 @@ export function HomePage() {
     const removedIds = new Set(removed.map((e) => e.id))
     setEvents((prev) => prev.filter((e) => !removedIds.has(e.id)))
     setLastSwipe({ action, removed })
+    void rerankRemaining(null)
   }
 
   const undoLastSwipe = async () => {
@@ -150,11 +185,15 @@ export function HomePage() {
     setUndoing(true)
     try {
       await api.undoInteraction(getSessionId(), event.id, lastSwipe.action)
+      if (lastSwipe.action === 'like') {
+        for (const restored of lastSwipe.removed) hiddenSeries.current.delete(seriesDedupeKey(restored))
+      }
       const restoredIds = new Set(lastSwipe.removed.map((e) => e.id))
       // Put the cards back on top of the deck, the undone one first.
       setEvents((prev) => [...lastSwipe.removed, ...prev.filter((e) => !restoredIds.has(e.id))])
       setLastSwipe(null)
       setSwipeError('')
+      void rerankRemaining(lastSwipe.removed)
     } catch {
       setSwipeError("Couldn't undo that swipe. Check your connection and try again.")
     } finally {

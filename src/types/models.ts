@@ -28,14 +28,6 @@ export const CATEGORY_OPTIONS = [
 
 export type EventCategory = (typeof CATEGORY_OPTIONS)[number]['id']
 
-export type QuestionItem = {
-  id: string
-  prompt: string
-  categories: EventCategory[]
-  /** Semantic tags used for personalization scoring */
-  tags: string[]
-}
-
 export type EventItem = {
   id: string
   title: string

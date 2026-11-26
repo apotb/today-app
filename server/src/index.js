@@ -6,6 +6,13 @@ import { all, get, initDb, run } from './db.js'
 import { fetchExternalEvents } from './eventsProvider.js'
 import { CATEGORY_TAGS } from './categoryTags.js'
 import { haversineMiles, toMiles } from './geo.js'
+import {
+  adjustTasteScores,
+  attendanceTasteDelta,
+  parseTags,
+  swipeTasteDelta,
+  tasteSignals,
+} from './taste.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 4000
@@ -26,21 +33,6 @@ const interactionSchema = z.object({
   sessionId: z.string().min(1),
   eventId: z.string().min(1),
   action: z.enum(['like', 'dislike']),
-})
-
-const questionnaireSchema = z.object({
-  sessionId: z.string().min(1),
-  answers: z
-    .array(
-      z.object({
-        questionId: z.string().min(1),
-        answer: z.boolean(),
-        categories: z.array(z.enum(categories)).min(1),
-        tags: z.array(z.string()).optional(),
-      }),
-    )
-    .min(1)
-    .max(10),
 })
 
 const attendanceSchema = z.object({
@@ -159,51 +151,18 @@ app.post('/api/preferences', async (req, res, next) => {
   }
 })
 
-app.post('/api/onboarding/responses', async (req, res, next) => {
-  try {
-    const parsed = questionnaireSchema.parse(req.body)
-    await run('DELETE FROM user_questionnaire_answers WHERE session_id = ?', [
-      parsed.sessionId,
-    ])
-    await run('DELETE FROM user_tag_scores WHERE session_id = ?', [parsed.sessionId])
-
-    const tagAccum = new Map()
-    for (const item of parsed.answers) {
-      await run(
-        `INSERT INTO user_questionnaire_answers
-          (session_id, question_id, answer, categories_json, tags_json, created_at)
-         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-        [
-          parsed.sessionId,
-          item.questionId,
-          item.answer ? 1 : 0,
-          JSON.stringify(item.categories),
-          JSON.stringify(item.tags ?? []),
-        ],
-      )
-      const tagList =
-        item.tags && item.tags.length > 0 ? item.tags : item.categories
-      const delta = item.answer ? 2 : -1
-      for (const tag of tagList) {
-        tagAccum.set(tag, (tagAccum.get(tag) ?? 0) + delta)
-      }
-    }
-    for (const [tag, score] of tagAccum) {
-      await run(`INSERT INTO user_tag_scores (session_id, tag, score) VALUES (?, ?, ?)`, [
-        parsed.sessionId,
-        tag,
-        score,
-      ])
-    }
-    res.status(201).json({ success: true })
-  } catch (error) {
-    next(error)
-  }
-})
-
 app.post('/api/attendance', async (req, res, next) => {
   try {
     const parsed = attendanceSchema.parse(req.body)
+    const existing = await get(
+      `SELECT status FROM user_event_attendance WHERE session_id = ? AND event_id = ?`,
+      [parsed.sessionId, parsed.eventId],
+    )
+    if (existing?.status !== parsed.status) {
+      const event = await get('SELECT tags FROM events WHERE id = ?', [parsed.eventId])
+      const delta = attendanceTasteDelta(parsed.status) - attendanceTasteDelta(existing?.status)
+      await adjustTasteScores(parsed.sessionId, parseTags(event?.tags), delta)
+    }
     await run(
       `INSERT INTO user_event_attendance (session_id, event_id, status, updated_at)
        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
@@ -228,11 +187,19 @@ app.post('/api/attendance', async (req, res, next) => {
 app.post('/api/interactions', async (req, res, next) => {
   try {
     const parsed = interactionSchema.parse(req.body)
-    await run(
+    const result = await run(
       `INSERT OR IGNORE INTO user_interactions (session_id, event_id, action)
        VALUES (?, ?, ?)`,
       [parsed.sessionId, parsed.eventId, parsed.action],
     )
+    if (result.changes > 0) {
+      const event = await get('SELECT tags FROM events WHERE id = ?', [parsed.eventId])
+      await adjustTasteScores(
+        parsed.sessionId,
+        parseTags(event?.tags),
+        swipeTasteDelta(parsed.action),
+      )
+    }
     res.status(201).json({ success: true })
   } catch (error) {
     next(error)
@@ -247,6 +214,14 @@ app.post('/api/interactions/undo', async (req, res, next) => {
       `DELETE FROM user_interactions WHERE session_id = ? AND event_id = ? AND action = ?`,
       [parsed.sessionId, parsed.eventId, parsed.action],
     )
+    if (result.changes > 0) {
+      const event = await get('SELECT tags FROM events WHERE id = ?', [parsed.eventId])
+      await adjustTasteScores(
+        parsed.sessionId,
+        parseTags(event?.tags),
+        -swipeTasteDelta(parsed.action),
+      )
+    }
     res.json({ success: true, removed: result.changes })
   } catch (error) {
     next(error)
@@ -398,26 +373,6 @@ app.get('/api/events/discover', async (req, res, next) => {
     ])
     const userTagScores = new Map(tagRows.map((r) => [r.tag, r.score]))
 
-    const questionRows = await all(
-      `SELECT answer, categories_json
-       FROM user_questionnaire_answers
-       WHERE session_id = ?`,
-      [sessionId],
-    )
-    const questionScoreMap = new Map()
-    for (const row of questionRows) {
-      let parsedCategories = []
-      try {
-        parsedCategories = JSON.parse(row.categories_json)
-      } catch {
-        parsedCategories = []
-      }
-      for (const category of parsedCategories) {
-        const current = questionScoreMap.get(category) ?? 0
-        questionScoreMap.set(category, current + (row.answer ? 2 : -1))
-      }
-    }
-
     const historical = await all(
       `SELECT e.category, ui.action, COUNT(*) as count
        FROM user_interactions ui
@@ -474,19 +429,12 @@ app.get('/api/events/discover', async (req, res, next) => {
     )
 
     const enriched = nearby.map((event) => {
-      let eventTags = []
-      try {
-        eventTags = JSON.parse(event.tags || '[]')
-      } catch {
-        eventTags = []
-      }
       let tagScreeningScore = 0
-      for (const t of eventTags) {
-        tagScreeningScore += userTagScores.get(t) ?? 0
+      for (const tag of tasteSignals(event.tags)) {
+        tagScreeningScore += userTagScores.get(tag) ?? 0
       }
 
       const prefWeight = prefMap.get(event.category) ?? 0
-      const categoryQuestionScore = questionScoreMap.get(event.category) ?? 0
       const behaviorScore = scoreByCategory.get(event.category) ?? 0
 
       const distanceMiles = haversineMiles(userLat, userLon, event.latitude, event.longitude)
@@ -494,18 +442,13 @@ app.get('/api/events/discover', async (req, res, next) => {
         (new Date(event.starts_at).getTime() - Date.now()) / (60 * 60 * 1000)
       const dateRelevance = Math.max(0, 12 - Math.floor(hoursUntil))
 
-      const preferenceScore =
-        prefWeight * 150 +
-        categoryQuestionScore * 50 +
-        tagScreeningScore * 22 +
-        behaviorScore * 18
+      const preferenceScore = prefWeight * 150 + tagScreeningScore * 22 + behaviorScore * 18
       const score = preferenceScore + dateRelevance * 0.25
 
       return {
         ...event,
         preferenceScore,
         prefWeight,
-        categoryQuestionScore,
         tagScreeningScore,
         behaviorScore,
         distanceMiles,
