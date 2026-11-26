@@ -56,7 +56,7 @@ h1,
 }
 
 .card-title,
-.modal h3,
+.event-expand-title,
 .past-title {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
@@ -1458,6 +1458,214 @@ a.modal-cal-btn {
   height: 220px;
   object-fit: cover;
   border-radius: 10px;
+}
+
+.swipe-card.is-concealed {
+  visibility: hidden;
+}
+
+.card-details-btn {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 10px;
+  width: 36px;
+  height: 36px;
+  margin-left: -18px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  color: #10213f;
+  box-shadow: 0 8px 18px rgba(15, 32, 70, 0.18);
+  cursor: pointer;
+}
+
+button.card-details-btn:hover {
+  background: #fff;
+}
+
+.event-expand {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.event-expand-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* The close animation owns scrollTop. Anchoring would pin the text and then jump. */
+  overflow-anchor: none;
+}
+
+.event-expand-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Overflow hidden while shrinking, so the scrollbar doesn't flash as the page
+   becomes a card. scrollTop is still animated back to the top. */
+.event-expand.is-closing .event-expand-scroll {
+  overflow: hidden;
+}
+
+.event-expand-hero {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #e8eef8;
+}
+
+.event-expand-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.event-expand-close {
+  position: absolute;
+  z-index: 7;
+  top: 12px;
+  left: 12px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  color: #10213f;
+  box-shadow: 0 8px 20px rgba(15, 32, 70, 0.16);
+  cursor: pointer;
+}
+
+.event-expand-close:disabled {
+  cursor: default;
+}
+
+.event-expand-up {
+  pointer-events: none;
+}
+
+.event-expand-nav,
+.event-expand-nav .image-nav-btn {
+  pointer-events: none;
+}
+
+.event-expand-body {
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: 14px 16px 28px;
+}
+
+.event-expand-body.has-actions {
+  padding-bottom: 118px;
+}
+
+.event-expand-title {
+  margin: 0 0 8px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.event-expand-desc {
+  display: grid;
+  /* One margin, matching the card paragraph. Inner margins would stack on
+     top of the price gap, because a grid doesn't collapse them. */
+  margin: 16px 0;
+}
+
+.event-expand-desc > .description {
+  grid-area: 1 / 1;
+  align-self: start;
+  margin: 0;
+}
+
+/* The deck card shows two lines. That copy fades in over the full text on
+   close so the handoff doesn't recut the paragraph. */
+.event-expand .description-preview {
+  -webkit-line-clamp: 2;
+  pointer-events: none;
+}
+
+.event-expand-extra {
+  overflow: hidden;
+  max-height: 800px;
+}
+
+.event-expand.is-closing .event-expand-extra {
+  max-height: 0;
+  pointer-events: none;
+  transition: max-height 0.28s ease;
+}
+
+.event-expand-actions {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 36px;
+  padding: 28px 16px 16px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.98) 55%, rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.expand-action {
+  pointer-events: auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  border: 1px solid #e4e8f1;
+  background: #fff;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 32, 70, 0.12);
+}
+
+.expand-action:hover {
+  transform: scale(1.05);
+}
+
+.expand-action:active {
+  transform: scale(0.96);
+}
+
+.expand-action:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+
+.expand-action.nope {
+  color: #cf2c2c;
+}
+
+.expand-action.like {
+  color: #00b100;
 }
 
 .error {

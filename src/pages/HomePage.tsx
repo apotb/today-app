@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api/client'
-import { EventDetailsModal } from '../components/EventDetailsModal'
+import { EventExpandPage, type ExpandOrigin } from '../components/EventExpandPage'
 import { SwipeCard } from '../components/SwipeCard'
 import { SwipeTutorialOverlay } from '../components/SwipeTutorialOverlay'
 import { useNavigationHints } from '../components/NavigationHintsContext'
@@ -26,7 +26,9 @@ export function HomePage() {
   const [tutorialDismissed, setTutorialDismissed] = useState(
     () => localStorage.getItem(TUTORIAL_SWIPE_KEY) === '1',
   )
-  const [detailEvent, setDetailEvent] = useState<EventItem | null>(null)
+  const [detail, setDetail] = useState<{ event: EventItem; origin: ExpandOrigin } | null>(null)
+  const [cardConcealed, setCardConcealed] = useState(false)
+  const deckRef = useRef<HTMLDivElement>(null)
   const [vibes, setVibes] = useState<VibeId[]>(getStoredVibes)
   // "Tonight" is judged against the time the feed was loaded.
   const [loadedAtMs, setLoadedAtMs] = useState(() => Date.now())
@@ -99,11 +101,28 @@ export function HomePage() {
     return `f:${e.title.trim().toLowerCase()}|${e.location.trim().toLowerCase()}`
   }
 
-  const swipe = async (direction: 'left' | 'right') => {
-    if (!current) return
+  const measureCard = (): ExpandOrigin | null => {
+    const el = deckRef.current?.querySelector('.swipe-card')
+    if (!(el instanceof HTMLElement)) return null
+    const rect = el.getBoundingClientRect()
+    const image = el.querySelector('.card-image-wrap')?.getBoundingClientRect()
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      radius: 18,
+      imageHeight: image?.height ?? rect.height * 0.55,
+      fadeContent: false,
+    }
+  }
+
+  const swipe = async (direction: 'left' | 'right', event?: EventItem) => {
+    const target = event ?? current
+    if (!target) return
     const action = direction === 'right' ? 'like' : 'dislike'
     try {
-      await api.submitInteraction(getSessionId(), current.id, action)
+      await api.submitInteraction(getSessionId(), target.id, action)
     } catch (e) {
       setSwipeError("Couldn't save that swipe. Check your connection and try again.")
       // Rethrow so SwipeCard animates the card back into place.
@@ -115,10 +134,10 @@ export function HomePage() {
     // Remove by id rather than position: with vibes on, the card shown isn't
     // necessarily the first event in the full list. A like also removes other
     // showtimes of the same series.
-    const likedKey = direction === 'right' ? seriesDedupeKey(current) : null
+    const likedKey = direction === 'right' ? seriesDedupeKey(target) : null
     const removed = [
-      current,
-      ...events.filter((e) => e.id !== current.id && likedKey && seriesDedupeKey(e) === likedKey),
+      target,
+      ...events.filter((e) => e.id !== target.id && likedKey && seriesDedupeKey(e) === likedKey),
     ]
     const removedIds = new Set(removed.map((e) => e.id))
     setEvents((prev) => prev.filter((e) => !removedIds.has(e.id)))
@@ -202,14 +221,19 @@ export function HomePage() {
         </p>
       ) : null}
       {!showTutorial && current ? (
-        <div className="home-deck">
+        <div className="home-deck" ref={deckRef}>
           <SwipeCard
             key={current.id}
             event={current}
             onSwipe={swipe}
-            onOpenDetails={() => setDetailEvent(current)}
+            onOpenDetails={(origin) => {
+              setDetail({ event: current, origin })
+              setCardConcealed(true)
+            }}
             showDesktopNav={isDesktop}
             deckLayout
+            concealed={cardConcealed}
+            detailsOpen={detail !== null}
           />
         </div>
       ) : null}
@@ -229,8 +253,20 @@ export function HomePage() {
           </button>
         </section>
       ) : null}
-      {detailEvent ? (
-        <EventDetailsModal event={detailEvent} onClose={() => setDetailEvent(null)} />
+      {detail ? (
+        <EventExpandPage
+          event={detail.event}
+          origin={detail.origin}
+          measureOrigin={measureCard}
+          onOpened={() => setCardConcealed(false)}
+          onFlyStart={() => setCardConcealed(true)}
+          onFlyCancel={() => setCardConcealed(false)}
+          onExited={() => {
+            setDetail(null)
+            setCardConcealed(false)
+          }}
+          onSwipe={(direction) => swipe(direction, detail.event)}
+        />
       ) : null}
     </div>
   )

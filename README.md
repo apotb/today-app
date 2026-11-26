@@ -53,7 +53,7 @@ today-app/
   src/
     api/client.ts        Typed API client
     pages/               Home, MyEvents, Onboarding, Settings
-    components/          SwipeCard, EventCalendar, EventDetailsModal, PreferenceQuiz, Layout, ...
+    components/          SwipeCard, EventExpandPage, EventCalendar, PreferenceQuiz, Layout, ...
     lib/                 Session, location, settings, formatting, calendar links, quiz questions
     types/models.ts      Shared frontend types and category list
     assets/logo.png

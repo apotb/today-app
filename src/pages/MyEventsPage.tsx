@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { EventCalendar } from '../components/EventCalendar'
-import { EventDetailsModal } from '../components/EventDetailsModal'
+import { EventExpandPage, type ExpandOrigin } from '../components/EventExpandPage'
 import { CALENDAR_WINDOW_MS } from '../lib/calendarLayout'
 import { getSessionId } from '../lib/session'
 import type { EventItem } from '../types/models'
@@ -9,7 +9,7 @@ import { maybeNotifyUpcoming } from '../lib/notifications'
 
 export function MyEventsPage() {
   const [events, setEvents] = useState<EventItem[]>([])
-  const [selected, setSelected] = useState<EventItem | null>(null)
+  const [selected, setSelected] = useState<{ event: EventItem; origin: ExpandOrigin } | null>(null)
   const [error, setError] = useState('')
   const [actionError, setActionError] = useState('')
   /** The most recently removed event, so it can be put back. */
@@ -118,7 +118,21 @@ export function MyEventsPage() {
         <EventCalendar
           events={upcoming}
           nowMs={nowMs}
-          onSelect={setSelected}
+          onSelect={(event, block) => {
+            const rect = block.getBoundingClientRect()
+            setSelected({
+              event,
+              origin: {
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height,
+                radius: 6,
+                imageHeight: Math.max(rect.height, 1),
+                fadeContent: true,
+              },
+            })
+          }}
           onRemove={(event) => void removeEvent(event)}
         />
       ) : null}
@@ -130,7 +144,27 @@ export function MyEventsPage() {
           </button>
         </div>
       ) : null}
-      {selected ? <EventDetailsModal event={selected} onClose={() => setSelected(null)} /> : null}
+      {selected ? (
+        <EventExpandPage
+          event={selected.event}
+          origin={selected.origin}
+          measureOrigin={() => {
+            const el = document.querySelector(`[data-event-id="${CSS.escape(selected.event.id)}"]`)
+            if (!(el instanceof HTMLElement)) return null
+            const rect = el.getBoundingClientRect()
+            return {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              radius: 6,
+              imageHeight: Math.max(rect.height, 1),
+              fadeContent: true,
+            }
+          }}
+          onExited={() => setSelected(null)}
+        />
+      ) : null}
     </div>
   )
 }
