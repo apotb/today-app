@@ -16,7 +16,7 @@ const DEMO_EVENT: EventItem = {
   location: 'Downtown venue',
 }
 
-type Hint = 'right' | 'left' | null
+type Hint = 'right' | 'left' | 'up' | null
 
 type Props = {
   onComplete: () => void
@@ -54,7 +54,20 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
       await new Promise((r) => setTimeout(r, 1400))
       if (cancelled.current) return
       setHint(null)
-      await controls.start({ x: 0, rotate: 0, transition: { duration: 0.28, ease: 'easeOut' } })
+      await controls.start({ x: 0, y: 0, rotate: 0, transition: { duration: 0.28, ease: 'easeOut' } })
+      await new Promise((r) => setTimeout(r, 400))
+      if (cancelled.current) return
+      setHint('up')
+      await controls.start({
+        y: -52,
+        x: 0,
+        rotate: 0,
+        transition: { type: 'spring', stiffness: 320, damping: 22 },
+      })
+      await new Promise((r) => setTimeout(r, 1400))
+      if (cancelled.current) return
+      setHint(null)
+      await controls.start({ x: 0, y: 0, rotate: 0, transition: { duration: 0.28, ease: 'easeOut' } })
       if (cancelled.current) return
       setSequenceDone(true)
     }
@@ -69,16 +82,13 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
       className="tutorial-overlay"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="tutorial-title"
+      aria-label="Swipe tutorial"
     >
       <div className="tutorial-backdrop" aria-hidden="true" />
       <div className="tutorial-content">
-        <p id="tutorial-title" className="tutorial-heading">
-          How swiping works
-        </p>
         <motion.article
           className="swipe-card tutorial-demo-card"
-          initial={{ x: 0, rotate: 0 }}
+          initial={{ x: 0, y: 0, rotate: 0 }}
           animate={controls}
         >
           {hint === 'right' ? (
@@ -91,8 +101,13 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
               Swipe left if you&apos;re not
             </div>
           ) : null}
+          {hint === 'up' ? (
+            <div className="tutorial-bubble tutorial-bubble-details" role="status">
+              Swipe up for details
+            </div>
+          ) : null}
           <div className="card-image-wrap">
-            <img src={DEMO_EVENT.image_url} alt="" className="card-image" />
+            <img src={DEMO_EVENT.image_url} alt="" className="card-image" draggable={false} />
             <div className="image-gradient" />
           </div>
           <div className="card-body">

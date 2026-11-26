@@ -18,7 +18,7 @@ import { VibeChips } from '../components/VibeChips'
 import { filterByVibes, getStoredVibes, saveStoredVibes, type VibeId } from '../lib/vibes'
 
 export function HomePage() {
-  const { notifyFirstLike } = useNavigationHints()
+  const { notifyFirstLike, setSwipeTutorialActive } = useNavigationHints()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -144,6 +144,14 @@ export function HomePage() {
   }
 
   const showTutorial = !loading && !error && !tutorialDismissed
+  // Lock the other tabs as soon as Home is going to show the tutorial, including
+  // while the deck is still loading. A load error unlocks them so Settings stays reachable.
+  const lockNavForTutorial = !error && !tutorialDismissed
+
+  useEffect(() => {
+    setSwipeTutorialActive(lockNavForTutorial)
+    return () => setSwipeTutorialActive(false)
+  }, [lockNavForTutorial, setSwipeTutorialActive])
 
   const completeTutorial = () => {
     localStorage.setItem(TUTORIAL_SWIPE_KEY, '1')
@@ -177,21 +185,15 @@ export function HomePage() {
       ) : null}
       {!showTutorial && (current || lastSwipe) ? (
         <p className="home-swipe-hint">
-          {current ? 'Swipe up for details' : null}
-          {current && isDesktop ? ' · Use ↑ ← →' : null}
-          {lastSwipe ? (
-            <>
-              {current ? ' · ' : null}
-              <button
-                type="button"
-                className="home-undo-btn"
-                onClick={() => void undoLastSwipe()}
-                disabled={undoing}
-              >
-                ↶ Undo {lastSwipe.action === 'like' ? 'like' : 'skip'}
-              </button>
-            </>
-          ) : null}
+          <button
+            type="button"
+            className={`home-undo-btn${lastSwipe ? '' : ' is-reserved'}`}
+            onClick={() => void undoLastSwipe()}
+            disabled={!lastSwipe || undoing}
+            aria-hidden={lastSwipe ? undefined : true}
+          >
+            ↩ Undo {lastSwipe?.action === 'dislike' ? 'skip' : 'like'}
+          </button>
         </p>
       ) : null}
       {swipeError ? (

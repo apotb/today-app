@@ -20,6 +20,9 @@ const LEGACY_FIRST_LIKE_HINT_KEY = 'today.hint.firstLikeEventsTab'
 type Ctx = {
   blockUntilEventsTab: boolean
   notifyFirstLike: () => void
+  /** True while the opening swipe tutorial is on screen (or about to be). */
+  swipeTutorialActive: boolean
+  setSwipeTutorialActive: (active: boolean) => void
 }
 
 const NavigationHintsContext = createContext<Ctx | null>(null)
@@ -39,6 +42,7 @@ function syncBlockingState(): boolean {
 
 export function NavigationHintsProvider({ children }: { children: ReactNode }) {
   const [blockUntilEventsTab, setBlockUntilEventsTab] = useState(syncBlockingState)
+  const [swipeTutorialActive, setSwipeTutorialActive] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -76,8 +80,10 @@ export function NavigationHintsProvider({ children }: { children: ReactNode }) {
     () => ({
       blockUntilEventsTab,
       notifyFirstLike,
+      swipeTutorialActive,
+      setSwipeTutorialActive,
     }),
-    [blockUntilEventsTab, notifyFirstLike],
+    [blockUntilEventsTab, notifyFirstLike, swipeTutorialActive],
   )
 
   return <NavigationHintsContext.Provider value={value}>{children}</NavigationHintsContext.Provider>

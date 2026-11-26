@@ -1,3 +1,20 @@
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('./assets/fonts/plus-jakarta/PlusJakartaSans-VariableFont_wght.ttf') format('truetype');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('./assets/fonts/bricolage-grotesque/BricolageGrotesque-VariableFont_opsz,wdth,wght.ttf') format('truetype');
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -16,9 +33,32 @@ body {
   margin: 0;
   min-height: 100%;
   height: 100%;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: #f2f8f2;
   color: #10213f;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.brand,
+h1,
+.settings-panel h2,
+.calendar-day h3,
+.first-like-blocker-title {
+  font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-stretch: 100%;
+  letter-spacing: -0.02em;
+}
+
+.card-title,
+.modal h3,
+.past-title {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 #root {
@@ -68,8 +108,10 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 700;
-  font-size: 1.1rem;
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  color: #007400;
 }
 
 .brand img {
@@ -260,15 +302,6 @@ html.page-home .app-main {
   height: 48px;
 }
 
-.tutorial-heading {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #fff;
-  text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
 .tutorial-demo-card {
   position: relative;
   pointer-events: none;
@@ -301,6 +334,12 @@ html.page-home .app-main {
   background: #ffd6d6;
   color: #6b0d0d;
   border: 1px solid #f09999;
+}
+
+.tutorial-bubble-details {
+  background: #d6e8ff;
+  color: #0d2f6b;
+  border: 1px solid #7db0f0;
 }
 
 button.tutorial-dismiss {
@@ -391,8 +430,11 @@ button.tutorial-dismiss {
   border: 1px solid rgba(228, 232, 241, 0.9);
   background: rgba(255, 255, 255, 0.9);
   color: #10213f;
+  font-family: inherit;
   font-size: 28px;
   line-height: 1;
+  appearance: none;
+  padding: 0;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -400,6 +442,13 @@ button.tutorial-dismiss {
   backdrop-filter: blur(8px);
   transition: transform 120ms ease, background 120ms ease, opacity 120ms ease;
   opacity: 0.92;
+}
+
+.image-nav-glyph {
+  display: block;
+  line-height: 1;
+  /* ‹ › sit about 0.1em below the em-box center in the system UI font. */
+  transform: translateY(-0.1em);
 }
 
 .image-nav-btn:hover {
@@ -468,6 +517,10 @@ button.tutorial-dismiss {
   width: 100%;
   height: 250px;
   object-fit: cover;
+  /* The photo must not start a native image drag; that steals the card swipe. */
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .card-body {
@@ -598,6 +651,11 @@ button.tutorial-dismiss {
 .home-undo-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Holds the undo row's height before a swipe so the deck card stays the same size. */
+.home-undo-btn.is-reserved {
+  visibility: hidden;
 }
 
 /* Vibe filter chips above the swipe deck: one row, scrolls sideways when it overflows */
@@ -941,17 +999,244 @@ button.tutorial-dismiss {
   font-size: 1.5rem;
 }
 
-.calendar-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.events-calendar-subtitle {
+  margin: 0 0 12px;
 }
 
-.calendar-day {
+.cal {
+  display: flex;
+  flex-direction: column;
+  height: max(340px, calc(100dvh - var(--app-chrome-top) - var(--app-chrome-bottom) - 142px));
   background: #fff;
   border: 1px solid #e4e8f1;
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.cal-days {
+  display: flex;
+  justify-content: space-around;
+  flex-shrink: 0;
+  padding: 8px;
+  border-bottom: 1px solid #e4e8f1;
+}
+
+.cal-day-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 18px;
+  border: 0;
+  background: none;
+  color: #10213f;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cal-day-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #5a6b85;
+}
+
+.cal-day-number {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 34px;
+  text-align: center;
+}
+
+.cal-day-btn.active .cal-day-number {
+  background: #e0342b;
+  color: #fff;
+  font-weight: 700;
+}
+
+.cal-day-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.cal-day-dot.has-events {
+  background: #8a97ad;
+}
+
+.cal-scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.cal-day-heading {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: 0;
+  padding: 8px 14px;
+  background: #f7f9fc;
+  border-bottom: 1px solid #e4e8f1;
+  font-size: 0.85rem;
+}
+
+.cal-day-heading span {
+  position: sticky;
+  left: 14px;
+}
+
+.cal-grid {
+  display: flex;
+}
+
+.cal-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.cal-hour {
+  padding: 3px 8px 0 0;
+  font-size: 0.7rem;
+  color: #5a6b85;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cal-lane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.cal-line {
+  border-bottom: 1px solid #edf0f6;
+}
+
+.cal-event {
+  position: absolute;
+  display: flex;
+  border-left: 4px solid var(--cal-color);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cal-color) 16%, #fff);
+  color: color-mix(in srgb, var(--cal-color) 65%, #000);
+  overflow: hidden;
+}
+
+.cal-event-open {
+  justify-content: flex-start;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 0 5px 7px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cal-event-title,
+.cal-event-meta {
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.cal-event-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.cal-event-meta {
+  font-size: 0.75rem;
+}
+
+.cal-event-remove {
+  flex-shrink: 0;
+  align-self: flex-start;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.cal-event-remove:hover {
+  background: color-mix(in srgb, var(--cal-color) 22%, transparent);
+}
+
+.cal-day-btn:focus-visible,
+.cal-event-open:focus-visible,
+.cal-event-remove:focus-visible {
+  outline: 2px solid #10213f;
+  outline-offset: -2px;
+}
+
+.cal-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 2px;
+  background: #e0342b;
+  pointer-events: none;
+}
+
+.cal-now::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e0342b;
+}
+
+.cal-undo {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--app-chrome-bottom) + 12px);
+  z-index: 30;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #10213f;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.cal-undo span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-undo button {
+  border: 0;
+  background: none;
+  color: #86efac;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .past-events {
@@ -986,27 +1271,100 @@ button.tutorial-dismiss {
   gap: 8px;
 }
 
-.settings-panel {
-  max-width: 760px;
+.settings-page {
+  width: 100%;
 }
 
-.settings-row {
-  margin-top: 12px;
+.settings-feedback {
+  margin: 0 0 12px;
+}
+
+.settings-stack {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-panel {
+  padding: 14px 16px;
+  box-shadow: 0 10px 28px rgba(15, 32, 70, 0.06);
+}
+
+.settings-panel h2 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.settings-panel p {
+  margin: 0 0 12px;
+  color: #506080;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.settings-panel .btn {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.unit-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: #eef1f7;
+  border: 1px solid #e4e8f1;
+}
+
+.unit-toggle button {
+  border: 0;
+  background: transparent;
+  color: #334261;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 7px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.unit-toggle button.is-active {
+  background: #fff;
+  color: #007400;
+  box-shadow: 0 1px 3px rgba(15, 32, 70, 0.12);
 }
 
 .radius-slider {
-  margin-top: 12px;
-  max-width: 420px;
+  margin: 0;
+}
+
+.radius-slider-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  color: #506080;
+  font-size: 0.92rem;
+}
+
+.radius-slider-label strong {
+  color: #10213f;
+  font-size: 1rem;
 }
 
 .radius-slider input {
   display: block;
   width: 100%;
-  height: 32px;
-  margin: 6px 0 0;
+  height: 28px;
+  margin: 2px 0 0;
   accent-color: #00b100;
   cursor: pointer;
 }
@@ -1014,8 +1372,9 @@ button.tutorial-dismiss {
 .radius-slider-scale {
   display: flex;
   justify-content: space-between;
+  margin-top: -2px;
   color: #506080;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 .input {
@@ -1024,29 +1383,6 @@ button.tutorial-dismiss {
   border: 1px solid #d6deee;
   border-radius: 10px;
   font: inherit;
-}
-
-.calendar-day h3 {
-  margin-top: 0;
-}
-
-.calendar-day ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.calendar-day button {
-  width: 100%;
-  border: 1px solid #dbe2f3;
-  border-radius: 10px;
-  background: #fafcff;
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  cursor: pointer;
 }
 
 .modal-backdrop {

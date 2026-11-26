@@ -66,68 +66,88 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="page">
+    <div className="page settings-page">
       <h1>Settings</h1>
-      <section className="panel settings-panel">
-        <h2>Location</h2>
-        <p className="status">Events use your device location (next 48 hours, within your radius).</p>
-        <div className="settings-row">
+      {message ? (
+        <p className="status settings-feedback" role="status">
+          {message}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="error settings-feedback" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="settings-stack">
+        <section className="panel settings-panel">
+          <h2>Location</h2>
+          <p>Events use your device location (next 48 hours, within your radius).</p>
           <button type="button" className="btn btn-primary" onClick={() => void enableLocation()}>
             Update location
           </button>
-        </div>
-        {message ? <p className="status">{message}</p> : null}
-        {error ? <p className="error">{error}</p> : null}
-      </section>
-      <section className="panel settings-panel">
-        <h2>Event feed</h2>
-        <p className="status">Re-run sync with your saved location and radius (48-hour window).</p>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          disabled={feedRefreshing}
-          onClick={() => void refreshEventFeed()}
-        >
-          {feedRefreshing ? 'Refreshing…' : 'Refresh event feed'}
-        </button>
-      </section>
-      <section className="panel settings-panel">
-        <h2>Discovery radius</h2>
-        <p className="status">How far from your location we search for events.</p>
-        <div className="radius-slider">
-          <label htmlFor="discovery-radius">
-            Distance: <strong>{radius} {unit}</strong>
-          </label>
-          <input
-            id="discovery-radius"
-            type="range"
-            min={0}
-            max={MAX_RADIUS[unit]}
-            step={1}
-            value={radius}
-            onChange={(e) => setRadius(Number(e.target.value))}
-            aria-valuetext={`${radius} ${unit}`}
-          />
-          <div className="radius-slider-scale" aria-hidden="true">
-            <span>0</span>
-            <span>{MAX_RADIUS[unit]}</span>
-          </div>
-        </div>
-        <div className="settings-row">
-          <select
-            className="input"
-            value={unit}
-            aria-label="Distance unit"
-            onChange={(e) => changeUnit(e.target.value === 'km' ? 'km' : 'miles')}
+        </section>
+        <section className="panel settings-panel">
+          <h2>Event feed</h2>
+          <p>Re-run sync with your saved location and radius (48-hour window).</p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={feedRefreshing}
+            onClick={() => void refreshEventFeed()}
           >
-            <option value="miles">Miles</option>
-            <option value="km">Kilometers</option>
-          </select>
-          <button type="button" className="btn btn-primary" onClick={saveRadius}>
-            Save radius
+            {feedRefreshing ? 'Refreshing…' : 'Refresh event feed'}
           </button>
-        </div>
-      </section>
+        </section>
+        <section className="panel settings-panel">
+          <h2>Discovery radius</h2>
+          <p>How far from your location we search for events.</p>
+          <div className="radius-slider">
+            <div className="radius-slider-label">
+              <label htmlFor="discovery-radius">Distance</label>
+              <strong>
+                {radius} {unit}
+              </strong>
+            </div>
+            <input
+              id="discovery-radius"
+              type="range"
+              min={0}
+              max={MAX_RADIUS[unit]}
+              step={1}
+              value={radius}
+              onChange={(e) => setRadius(Number(e.target.value))}
+              aria-valuetext={`${radius} ${unit}`}
+            />
+            <div className="radius-slider-scale" aria-hidden="true">
+              <span>0</span>
+              <span>{MAX_RADIUS[unit]}</span>
+            </div>
+          </div>
+          <div className="settings-actions">
+            <div className="unit-toggle" role="group" aria-label="Distance unit">
+              <button
+                type="button"
+                className={unit === 'miles' ? 'is-active' : undefined}
+                aria-pressed={unit === 'miles'}
+                onClick={() => changeUnit('miles')}
+              >
+                Miles
+              </button>
+              <button
+                type="button"
+                className={unit === 'km' ? 'is-active' : undefined}
+                aria-pressed={unit === 'km'}
+                onClick={() => changeUnit('km')}
+              >
+                Km
+              </button>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={saveRadius}>
+              Save radius
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

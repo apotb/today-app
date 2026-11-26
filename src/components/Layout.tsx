@@ -87,7 +87,7 @@ function NavDummy({ children }: { children: ReactNode }) {
 }
 
 function LayoutShell() {
-  const { blockUntilEventsTab } = useNavigationHints()
+  const { blockUntilEventsTab, swipeTutorialActive } = useNavigationHints()
 
   useLayoutEffect(() => {
     const top = document.querySelector('.app-top-brand')
@@ -158,21 +158,28 @@ function LayoutShell() {
             <span>Home</span>
           </NavLink>
         )}
-        <NavLink
-          to="/my-events"
-          className={({ isActive }) =>
-            [
-              bottomNavClass({ isActive }),
-              blockUntilEventsTab ? 'bottom-nav-events-spotlight' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')
-          }
-        >
-          <IconCalendar />
-          <span>Events</span>
-        </NavLink>
-        {blockUntilEventsTab ? (
+        {swipeTutorialActive ? (
+          <NavDummy>
+            <IconCalendar />
+            <span>Events</span>
+          </NavDummy>
+        ) : (
+          <NavLink
+            to="/my-events"
+            className={({ isActive }) =>
+              [
+                bottomNavClass({ isActive }),
+                blockUntilEventsTab ? 'bottom-nav-events-spotlight' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')
+            }
+          >
+            <IconCalendar />
+            <span>Events</span>
+          </NavLink>
+        )}
+        {blockUntilEventsTab || swipeTutorialActive ? (
           <NavDummy>
             <IconSettings />
             <span>Settings</span>

@@ -142,6 +142,8 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
           src={event.image_url}
           alt={event.title}
           className="card-image"
+          draggable={false}
+          onDragStart={(dragEvent) => dragEvent.preventDefault()}
           style={{
             opacity: imageReady ? 1 : 0,
             visibility: imageReady ? 'visible' : 'hidden',
@@ -162,7 +164,9 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
               title="Dislike (←)"
               disabled={animating || !imageReady}
             >
-              ‹
+              <span className="image-nav-glyph" aria-hidden="true">
+                ‹
+              </span>
             </button>
             <button
               type="button"
@@ -172,7 +176,9 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
               title="Like (→)"
               disabled={animating || !imageReady}
             >
-              ›
+              <span className="image-nav-glyph" aria-hidden="true">
+                ›
+              </span>
             </button>
           </div>
         ) : null}

@@ -6,7 +6,7 @@ Today is a full-stack local event discovery app with a Tinder-style swipe interf
 
 1. **Onboarding:** the user allows location, picks interest categories, and answers 10 quick yes/no questions.
 2. **Home:** a swipe deck of events in the next 48 hours within the user's radius. Swipe right to save, left to skip, up for details.
-3. **My Events:** a calendar of saved events for today through the next two days, with add-to-calendar links.
+3. **My Events:** an hour-by-hour calendar of saved events for the next 48 hours. Tap an event for details and add-to-calendar links, or its ✕ to remove it (this undoes the like, so the event returns to the Home deck).
 4. **Settings:** change location, radius (miles or km), and force a fresh event refresh.
 
 There are no accounts yet. Each browser gets a random session id stored in `localStorage` (`today.session.id`), and all preferences and swipes are tied to it.
