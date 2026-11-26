@@ -103,7 +103,6 @@ export function MyEventsPage() {
   return (
     <div className="page">
       <h1>Events</h1>
-      <p className="status events-calendar-subtitle">Next 48 hours</p>
       {actionError ? (
         <p className="error" role="alert">
           {actionError}
@@ -111,7 +110,7 @@ export function MyEventsPage() {
       ) : null}
       {error ? <p className="error">{error}</p> : null}
       {!error && upcoming.length === 0 ? (
-        <p className="empty">
+        <p className="empty events-calendar-subtitle">
           No saved events in the next 48 hours. Swipe right on events you want to attend.
         </p>
       ) : null}
