@@ -780,8 +780,13 @@ button.tutorial-dismiss {
 }
 
 .home-empty-panel {
-  margin-top: 10px;
+  margin-top: 6px;
   flex-shrink: 0;
+}
+
+/* The browser's default paragraph margin stacks on the panel padding. */
+.home-empty-panel p {
+  margin: 0 0 12px;
 }
 
 .feed-meta {
