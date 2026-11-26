@@ -664,7 +664,8 @@ button.tutorial-dismiss {
   visibility: hidden;
 }
 
-/* Vibe filter chips above the swipe deck: one row, scrolls sideways when it overflows */
+/* Vibe filter chips above the swipe deck: one row, scrolls sideways when it overflows.
+   The right edge fades only while more chips sit offscreen. Scrolled to the end, it is solid. */
 .vibe-chips {
   flex-shrink: 0;
   display: flex;
@@ -674,7 +675,9 @@ button.tutorial-dismiss {
   margin: 0 -4px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  /* Fade the right edge so it's clear more chips scroll into view */
+}
+
+.vibe-chips.is-fading-right {
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 }
