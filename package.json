@@ -15,9 +15,14 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node server/src/index.js",
-    "start:server": "node server/src/index.js"
+    "start:server": "node server/src/index.js",
+    "ios:sync": "node scripts/ios-sync.mjs",
+    "ios:open": "npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.6.3",
+    "@capacitor/geolocation": "^8.2.5",
+    "@capacitor/ios": "^8.6.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "framer-motion": "^12.38.0",
@@ -27,6 +32,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.3",
     "@eslint/js": "^9.39.4",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

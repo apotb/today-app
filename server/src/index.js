@@ -6,6 +6,7 @@ import { all, get, initDb, run } from './db.js'
 import { fetchExternalEvents } from './eventsProvider.js'
 import { CATEGORY_TAGS } from './categoryTags.js'
 import { haversineMiles, toMiles } from './geo.js'
+import { buildEventIcs } from './calendarIcs.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 4000
@@ -531,6 +532,26 @@ app.get('/api/events/discover', async (req, res, next) => {
     res.json({
       events: enriched.map(({ tieBreak, ...rest }) => rest),
     })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/events/:eventId/calendar.ics', async (req, res, next) => {
+  try {
+    const event = await get('SELECT * FROM events WHERE id = ?', [req.params.eventId])
+    if (!event) {
+      res.status(404).json({ message: 'Event not found' })
+      return
+    }
+    const ics = buildEventIcs(event)
+    if (!ics) {
+      res.status(400).json({ message: 'Event is missing a start time' })
+      return
+    }
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
+    res.setHeader('Content-Disposition', 'inline; filename="event.ics"')
+    res.send(ics)
   } catch (error) {
     next(error)
   }

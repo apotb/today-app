@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { EventItem } from '../types/models'
 import { formatDateTime12h, formatPrice } from '../lib/format'
-import { downloadIcsFile, googleCalendarUrl } from '../lib/calendarLinks'
+import { appleCalendarUrl, googleCalendarUrl } from '../lib/calendarLinks'
 import {
   categoryLabel,
   directionsUrl,
@@ -24,6 +24,7 @@ const SHARE_MESSAGES = {
 
 export function EventDetailsModal({ event, onClose }: Props) {
   const gcal = googleCalendarUrl(event)
+  const appleCal = appleCalendarUrl(event)
   const pageUrl = eventPageUrl(event)
   const [shareMessage, setShareMessage] = useState('')
 
@@ -85,13 +86,14 @@ export function EventDetailsModal({ event, onClose }: Props) {
           <a className="btn btn-secondary modal-cal-btn" href={gcal} target="_blank" rel="noopener noreferrer">
             Add to Google Calendar
           </a>
-          <button
-            type="button"
+          <a
             className="btn btn-secondary modal-cal-btn"
-            onClick={() => downloadIcsFile(event)}
+            href={appleCal}
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Add to Apple Calendar
-          </button>
+          </a>
         </div>
         <p className="modal-cal-note">
           Apple Calendar uses a standard .ics file (opens in Calendar on most devices).

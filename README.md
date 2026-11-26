@@ -78,6 +78,7 @@ Base URL locally: `http://localhost:4000/api`
 | `POST /interactions` | Save a swipe: `{ sessionId, eventId, action: "like" \| "dislike" }`. |
 | `POST /attendance` | Save attendance: `{ sessionId, eventId, status: "attended" \| "missed" }`. |
 | `GET /events/:eventId` | Single event. |
+| `GET /events/:eventId/calendar.ics` | One event as an Apple Calendar file. |
 | `GET /my-events?sessionId=...` | Saved events for roughly the next 4 days, with `attendance_status`. |
 
 ### Examples

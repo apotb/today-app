@@ -26,3 +26,8 @@ dist-ssr
 # Local SQLite databases
 server/*.db
 server/*.db-*
+
+# Xcode
+**/xcuserdata/
+ios/App/build
+DerivedData/

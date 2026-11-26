@@ -1,3 +1,6 @@
+import { Capacitor } from '@capacitor/core'
+import { Geolocation } from '@capacitor/geolocation'
+
 export type StoredLocation = {
   mode: 'geolocation'
   latitude: number
@@ -34,7 +37,23 @@ export const saveStoredLocation = (location: StoredLocation) => {
   localStorage.setItem(LOCATION_KEY, JSON.stringify(location))
 }
 
-export const requestBrowserLocation = () =>
+const requestNativeLocation = async (): Promise<StoredLocation> => {
+  const permission = await Geolocation.requestPermissions()
+  if (permission.location !== 'granted') {
+    throw new Error('Could not access your location.')
+  }
+  const position = await Geolocation.getCurrentPosition({
+    enableHighAccuracy: true,
+    timeout: 10000,
+  })
+  return {
+    mode: 'geolocation',
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+  }
+}
+
+const requestWebLocation = () =>
   new Promise<StoredLocation>((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported in this browser.'))
@@ -52,3 +71,6 @@ export const requestBrowserLocation = () =>
       { enableHighAccuracy: true, timeout: 10000 },
     )
   })
+
+export const requestBrowserLocation = () =>
+  Capacitor.isNativePlatform() ? requestNativeLocation() : requestWebLocation()
