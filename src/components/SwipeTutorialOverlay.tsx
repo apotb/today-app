@@ -110,17 +110,6 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
           <div className="card-image-wrap">
             <img src={DEMO_EVENT.image_url} alt="" className="card-image" draggable={false} />
             <div className="image-gradient" />
-            <div className="card-details-btn" aria-hidden>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M6 14.5 12 8.5l6 6"
-                  stroke="currentColor"
-                  strokeWidth="2.25"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
           </div>
           <div className="card-body">
             <EventBadges event={DEMO_EVENT} />
