@@ -17,6 +17,7 @@
     "start": "node server/src/index.js",
     "start:server": "node server/src/index.js",
     "ios:sync": "node scripts/ios-sync.mjs",
+    "ios:release": "VITE_API_BASE=https://today-app-api.onrender.com/api npm run ios:sync",
     "ios:open": "npx cap open ios"
   },
   "dependencies": {

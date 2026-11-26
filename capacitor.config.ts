@@ -9,8 +9,8 @@ const config: CapacitorConfig = {
     contentInset: 'never',
     backgroundColor: '#f2f8f2',
   },
-  // The web view is capacitor://localhost. Fetch to the local HTTP API is
-  // routed through the native HTTP stack so iOS does not block it as mixed content.
+  // Debug runs in Xcode load the Vite server instead (scripts/ios-live-reload.py).
+  // A bundled build uses capacitor://localhost, so CapacitorHttp carries API calls.
   plugins: {
     CapacitorHttp: {
       enabled: true,
