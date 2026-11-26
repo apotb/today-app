@@ -281,10 +281,12 @@ export function EventExpandPage({
 
   useEffect(() => {
     const main = document.querySelector('.app-main')
-    const shell = document.querySelector('.app-shell')
     const previous = main instanceof HTMLElement ? main.style.overflow : ''
-    if (main instanceof HTMLElement) main.style.overflow = 'hidden'
-    if (shell instanceof HTMLElement) shell.inert = true
+    if (main instanceof HTMLElement) {
+      main.style.overflow = 'hidden'
+      // The tab bar sits outside this region and stays clickable.
+      main.inert = true
+    }
     closeRef.current?.focus({ preventScroll: true })
     const reduce = prefersReducedMotion()
     void animate(chromeOpacity, 1, { duration: reduce ? 0.01 : 0.22, delay: reduce ? 0 : 0.06 })
@@ -314,8 +316,10 @@ export function EventExpandPage({
       stopPlayback()
       momentum.current = null
       window.removeEventListener('resize', onResize)
-      if (main instanceof HTMLElement) main.style.overflow = previous
-      if (shell instanceof HTMLElement) shell.inert = false
+      if (main instanceof HTMLElement) {
+        main.style.overflow = previous
+        main.inert = false
+      }
     }
     // Motion values and playFrame are stable for the lifetime of this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -464,7 +468,7 @@ export function EventExpandPage({
       ref={sheetRef}
       className={leaving ? 'event-expand is-closing' : 'event-expand'}
       role="dialog"
-      aria-modal="true"
+      aria-modal="false"
       aria-labelledby="event-expand-title"
       style={{ top, left, width, height, x, y, rotate, opacity, borderRadius }}
     >
