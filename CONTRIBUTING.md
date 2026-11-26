@@ -35,6 +35,8 @@ Use one logical change per commit. Mark a breaking change with `!`, as in `feat(
 
 Describe what changed and how you checked it.
 
+GitHub Actions (`.github/workflows/ci.yml`) also runs `npm run lint` and `npm run build` on every pull request into `main`. The result shows as a check on the pull request; fix a red check before merging.
+
 ## Keep these in sync
 
 - Category ids in `CATEGORY_OPTIONS` (`src/types/models.ts`) and `CATEGORY_TAGS` (`server/src/categoryTags.js`).
