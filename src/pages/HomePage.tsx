@@ -183,15 +183,16 @@ export function HomePage() {
       {!showTutorial && events.length > 0 ? (
         <VibeChips selected={vibes} onChange={changeVibes} />
       ) : null}
-      {!showTutorial && lastSwipe ? (
+      {!showTutorial && (current || lastSwipe) ? (
         <p className="home-swipe-hint">
           <button
             type="button"
-            className="home-undo-btn"
+            className={`home-undo-btn${lastSwipe ? '' : ' is-reserved'}`}
             onClick={() => void undoLastSwipe()}
-            disabled={undoing}
+            disabled={!lastSwipe || undoing}
+            aria-hidden={lastSwipe ? undefined : true}
           >
-            ↩ Undo {lastSwipe.action === 'like' ? 'like' : 'skip'}
+            ↩ Undo {lastSwipe?.action === 'dislike' ? 'skip' : 'like'}
           </button>
         </p>
       ) : null}

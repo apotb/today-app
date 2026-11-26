@@ -659,6 +659,11 @@ button.tutorial-dismiss {
   cursor: default;
 }
 
+/* Holds the undo row's height before a swipe so the deck card stays the same size. */
+.home-undo-btn.is-reserved {
+  visibility: hidden;
+}
+
 /* Vibe filter chips above the swipe deck: one row, scrolls sideways when it overflows */
 .vibe-chips {
   flex-shrink: 0;
