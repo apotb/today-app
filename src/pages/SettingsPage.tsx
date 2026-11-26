@@ -10,6 +10,7 @@ import { dispatchFeedRefresh } from '../lib/feedEvents'
 import { getSessionId, resetLocalAccount } from '../lib/session'
 import {
   MAX_RADIUS,
+  MIN_RADIUS,
   convertRadius,
   getStoredDiscoverySettings,
   saveDiscoverySettings,
@@ -142,7 +143,7 @@ export function SettingsPage() {
             <input
               id="discovery-radius"
               type="range"
-              min={0}
+              min={MIN_RADIUS[unit]}
               max={MAX_RADIUS[unit]}
               step={1}
               value={radius}
@@ -150,12 +151,14 @@ export function SettingsPage() {
               aria-valuetext={`${radius} ${unit}`}
               style={
                 {
-                  '--radius-ratio': String(radius / MAX_RADIUS[unit]),
+                  '--radius-ratio': String(
+                    (radius - MIN_RADIUS[unit]) / (MAX_RADIUS[unit] - MIN_RADIUS[unit]),
+                  ),
                 } as CSSProperties
               }
             />
             <div className="radius-slider-scale" aria-hidden="true">
-              <span>0</span>
+              <span>{MIN_RADIUS[unit]}</span>
               <span>{MAX_RADIUS[unit]}</span>
             </div>
           </div>

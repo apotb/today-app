@@ -11,11 +11,14 @@ const UPDATE_EVENT = 'today:discovery-settings-updated'
 /** Upper end of the radius slider. 160 km is the 100-mile limit in round kilometers. */
 export const MAX_RADIUS: Record<DistanceUnit, number> = { miles: 100, km: 160 }
 
+/** Lower end of the radius slider. 2 km is the 1-mile floor in whole kilometers. */
+export const MIN_RADIUS: Record<DistanceUnit, number> = { miles: 1, km: 2 }
+
 export const KM_PER_MILE = 1.609344
 
 /** Rounds to a whole number and keeps it within the slider's range for the unit. */
 const clampRadius = (radius: number, unit: DistanceUnit) =>
-  Math.min(Math.max(Math.round(radius), 0), MAX_RADIUS[unit])
+  Math.min(Math.max(Math.round(radius), MIN_RADIUS[unit]), MAX_RADIUS[unit])
 
 /** Converts a radius between units, keeping the result within the slider's range. */
 export const convertRadius = (radius: number, from: DistanceUnit, to: DistanceUnit) => {
