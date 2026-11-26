@@ -531,15 +531,29 @@ button.tutorial-dismiss {
   scroll-behavior: smooth;
 }
 
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
 .chip {
   display: inline-block;
   background: #d8f2d8;
   color: #007400;
   padding: 6px 10px;
   border-radius: 999px;
-  margin: 0 0 8px;
+  margin: 0;
   font-weight: 600;
   font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.chip-distance {
+  background: #e6e8ee;
+  color: #5c6578;
 }
 
 .card-title {

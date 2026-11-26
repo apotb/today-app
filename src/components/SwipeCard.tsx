@@ -3,8 +3,8 @@ import { flushSync } from 'react-dom'
 import { motion, useAnimation, useMotionValue, useTransform, type PanInfo } from 'framer-motion'
 import type { EventItem } from '../types/models'
 import { formatDateTime12h, formatPrice } from '../lib/format'
-import { categoryLabel } from '../lib/eventActions'
 import type { ExpandOrigin } from './EventExpandPage'
+import { EventBadges } from './EventBadges'
 
 type Props = {
   event: EventItem
@@ -258,7 +258,7 @@ export function SwipeCard({
         ) : null}
       </div>
       <div className="card-body" style={{ opacity: imageReady ? 1 : 0 }}>
-        <p className="chip">{categoryLabel(event.category)}</p>
+        <EventBadges event={event} />
         <h2 className="card-title">{event.title}</h2>
         <p>{formatDateTime12h(event.starts_at)}</p>
         <p>{event.location}</p>

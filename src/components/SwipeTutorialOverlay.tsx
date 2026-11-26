@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import type { EventItem } from '../types/models'
 import { formatDateTime12h, formatPrice } from '../lib/format'
-import { categoryLabel } from '../lib/eventActions'
+import { EventBadges } from './EventBadges'
 
 const DEMO_EVENT: EventItem = {
   id: 'tutorial-demo',
@@ -14,6 +14,7 @@ const DEMO_EVENT: EventItem = {
   image_url: 'https://picsum.photos/seed/today-tutorial-swipe/1200/675',
   category: 'music-nightlife',
   location: 'Downtown venue',
+  distanceMiles: 0.4,
 }
 
 type Hint = 'right' | 'left' | 'up' | null
@@ -122,7 +123,7 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
             </div>
           </div>
           <div className="card-body">
-            <p className="chip">{categoryLabel(DEMO_EVENT.category)}</p>
+            <EventBadges event={DEMO_EVENT} />
             <h2 className="card-title">{DEMO_EVENT.title}</h2>
             <p>{formatDateTime12h(DEMO_EVENT.starts_at)}</p>
             <p>{DEMO_EVENT.location}</p>

@@ -11,13 +11,8 @@ import type { EventItem } from '../types/models'
 import { formatDateTime12h, formatPrice } from '../lib/format'
 import { useIsDesktop } from '../lib/useIsDesktop'
 import { downloadIcsFile, googleCalendarUrl } from '../lib/calendarLinks'
-import {
-  categoryLabel,
-  directionsUrl,
-  eventPageLabel,
-  eventPageUrl,
-  shareEvent,
-} from '../lib/eventActions'
+import { directionsUrl, eventPageLabel, eventPageUrl, shareEvent } from '../lib/eventActions'
+import { EventBadges } from './EventBadges'
 
 export type ExpandOrigin = {
   top: number
@@ -508,7 +503,7 @@ export function EventExpandPage({
           className={onSwipe ? 'event-expand-body has-actions' : 'event-expand-body'}
           style={{ opacity: bodyOpacity }}
         >
-          <p className="chip">{categoryLabel(event.category)}</p>
+          <EventBadges event={event} />
           <h2 id="event-expand-title" className="event-expand-title">
             {event.title}
           </h2>

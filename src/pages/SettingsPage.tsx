@@ -30,8 +30,13 @@ export function SettingsPage() {
   }
 
   const changeUnit = (next: DistanceUnit) => {
-    setRadius(convertRadius(radius, unit, next))
+    if (next === unit) return
+    const nextRadius = convertRadius(radius, unit, next)
+    setRadius(nextRadius)
     setUnit(next)
+    saveDiscoverySettings({ radius: nextRadius, unit: next })
+    setError('')
+    setMessage('Distance unit saved.')
   }
 
   const enableLocation = async () => {
@@ -99,6 +104,28 @@ export function SettingsPage() {
           </button>
         </section>
         <section className="panel settings-panel">
+          <h2>Distance unit</h2>
+          <p>Miles or kilometers. Event distances and the discovery radius both use this.</p>
+          <div className="unit-toggle" role="group" aria-label="Distance unit">
+            <button
+              type="button"
+              className={unit === 'miles' ? 'is-active' : undefined}
+              aria-pressed={unit === 'miles'}
+              onClick={() => changeUnit('miles')}
+            >
+              Miles
+            </button>
+            <button
+              type="button"
+              className={unit === 'km' ? 'is-active' : undefined}
+              aria-pressed={unit === 'km'}
+              onClick={() => changeUnit('km')}
+            >
+              Km
+            </button>
+          </div>
+        </section>
+        <section className="panel settings-panel">
           <h2>Discovery radius</h2>
           <p>How far from your location we search for events.</p>
           <div className="radius-slider">
@@ -124,24 +151,6 @@ export function SettingsPage() {
             </div>
           </div>
           <div className="settings-actions">
-            <div className="unit-toggle" role="group" aria-label="Distance unit">
-              <button
-                type="button"
-                className={unit === 'miles' ? 'is-active' : undefined}
-                aria-pressed={unit === 'miles'}
-                onClick={() => changeUnit('miles')}
-              >
-                Miles
-              </button>
-              <button
-                type="button"
-                className={unit === 'km' ? 'is-active' : undefined}
-                aria-pressed={unit === 'km'}
-                onClick={() => changeUnit('km')}
-              >
-                Km
-              </button>
-            </div>
             <button type="button" className="btn btn-primary" onClick={saveRadius}>
               Save radius
             </button>

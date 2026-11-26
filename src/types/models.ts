@@ -51,5 +51,9 @@ export type EventItem = {
   /** Same series / recurring show; used to hide other showtimes after a like */
   series_key?: string | null
   attendance_status?: 'attended' | 'missed' | null
+  latitude?: number | null
+  longitude?: number | null
+  /** Miles from the location sent with discover. Used when coordinates are missing. */
+  distanceMiles?: number | null
   score?: number
 }
