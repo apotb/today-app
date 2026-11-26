@@ -23,7 +23,6 @@ export const CATEGORY_OPTIONS = [
   { id: 'markets', name: 'Markets', icon: '🛍️' },
   { id: 'religious-spiritual', name: 'Religious & Spiritual', icon: '🕊️' },
   { id: 'activism-politics', name: 'Activism & Politics', icon: '📣' },
-  { id: 'travel-exploration', name: 'Travel & Exploration', icon: '🧭' },
 ] as const
 
 export type EventCategory = (typeof CATEGORY_OPTIONS)[number]['id']

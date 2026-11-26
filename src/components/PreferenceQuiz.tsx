@@ -35,24 +35,30 @@ export function PreferenceQuiz({ onSubmit }: Props) {
   }
 
   return (
-    <section className="onboarding-panel">
+    <section className="onboarding-panel categories-step">
       <h1>What are you into?</h1>
-      <p>Pick a few interests. We&apos;ll start there and tune the deck as you swipe.</p>
-      <div className="category-grid">
-        {CATEGORY_OPTIONS.map((category) => (
-          <button
-            key={category.id}
-            className={`category-card ${selected.includes(category.id) ? 'active' : ''}`}
-            onClick={() => toggle(category.id)}
-            disabled={saving}
-          >
-            <span className="emoji">{category.icon}</span>
-            <span>{category.name}</span>
-          </button>
-        ))}
+      <div className="category-grid" role="group" aria-label="Interests">
+        {CATEGORY_OPTIONS.map((category) => {
+          const active = selected.includes(category.id)
+          return (
+            <button
+              key={category.id}
+              type="button"
+              className={`category-card ${active ? 'active' : ''}`}
+              aria-pressed={active}
+              onClick={() => toggle(category.id)}
+              disabled={saving}
+            >
+              <span className="emoji" aria-hidden="true">
+                {category.icon}
+              </span>
+              <span className="category-name">{category.name}</span>
+            </button>
+          )
+        })}
       </div>
       {error ? <p className="error">{error}</p> : null}
-      <button className="btn btn-primary" onClick={() => void finish()} disabled={saving}>
+      <button className="btn btn-primary categories-continue" onClick={() => void finish()} disabled={saving}>
         {saving ? 'Saving...' : 'See events'}
       </button>
     </section>
