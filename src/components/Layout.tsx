@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useLayoutEffect } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import { NavigationHintsProvider, useNavigationHints } from './NavigationHintsContext'
 
@@ -112,17 +112,10 @@ function LayoutShell() {
   return (
     <div className="app-shell">
       <header className="app-top-brand">
-        {blockUntilEventsTab ? (
-          <span className="brand brand-disabled" aria-disabled="true">
-            <img src={logo} alt="" width={38} height={38} />
-            <span>Today</span>
-          </span>
-        ) : (
-          <Link to="/" className="brand">
-            <img src={logo} alt="" width={38} height={38} />
-            <span>Today</span>
-          </Link>
-        )}
+        <span className="brand">
+          <img src={logo} alt="" width={38} height={38} />
+          <span>Today</span>
+        </span>
       </header>
       <div className="app-main-wrap">
         <main className="app-main">

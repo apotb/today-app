@@ -91,11 +91,6 @@ a {
   z-index: 20;
 }
 
-.brand-disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
 .app-main-wrap {
   flex: 1;
   min-height: 0;
@@ -112,6 +107,9 @@ a {
   font-size: 1.35rem;
   letter-spacing: -0.03em;
   color: #007400;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
 }
 
 .brand img {
