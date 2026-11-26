@@ -576,6 +576,11 @@ button.tutorial-dismiss {
   color: #007400;
 }
 
+.btn-danger {
+  background: #fdecec;
+  color: #9b2c2c;
+}
+
 .btn-ghost {
   background: #eef1f7;
   color: #334261;
@@ -1438,6 +1443,71 @@ button.tutorial-dismiss {
   justify-content: space-between;
   gap: 10px;
   margin-top: 10px;
+}
+
+.settings-reset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.settings-reset .btn {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.settings-reset-backdrop {
+  z-index: 80;
+  padding:
+    calc(20px + env(safe-area-inset-top, 0px))
+    calc(20px + env(safe-area-inset-right, 0px))
+    calc(20px + env(safe-area-inset-bottom, 0px))
+    calc(20px + env(safe-area-inset-left, 0px));
+}
+
+.settings-reset-dialog {
+  width: min(360px, 100%);
+  background: #fff;
+  border: 1px solid #e4e8f1;
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 16px 40px rgba(15, 32, 70, 0.18);
+}
+
+.settings-reset-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #10213f;
+}
+
+.settings-reset-dialog p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.settings-reset-dialog #reset-account-desc {
+  color: #506080;
+}
+
+.settings-reset-dialog .error {
+  margin: 12px 0 0;
+  color: #ac1d38;
+}
+
+.settings-reset-dialog-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.settings-reset-dialog-actions .btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 12px;
 }
 
 .unit-toggle {

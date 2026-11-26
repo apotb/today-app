@@ -55,6 +55,12 @@ export const api = {
       body: JSON.stringify({ sessionId, categories }),
     }),
 
+  resetAccount: (sessionId: string) =>
+    request<{ success: boolean }>('/account/reset', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    }),
+
   syncEvents: (
     sessionId: string,
     location: StoredLocation | null,

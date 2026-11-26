@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { PreferenceQuiz } from '../components/PreferenceQuiz'
 import { getSessionId } from '../lib/session'
@@ -20,6 +20,31 @@ export function OnboardingPage({ onComplete }: Props) {
   const navigate = useNavigate()
   const [location, setLocation] = useState<StoredLocation | null>(getStoredLocation())
   const [locationError, setLocationError] = useState('')
+  const [checkingPermission, setCheckingPermission] = useState(() => getStoredLocation() == null)
+
+  useEffect(() => {
+    if (location) return
+    let cancelled = false
+    const skipIfGranted = async () => {
+      try {
+        if (!navigator.permissions?.query) return
+        const status = await navigator.permissions.query({ name: 'geolocation' })
+        if (cancelled || status.state !== 'granted') return
+        const geo = await requestBrowserLocation()
+        if (cancelled) return
+        saveStoredLocation(geo)
+        setLocation(geo)
+      } catch {
+        // Permissions API unsupported or geolocation failed — show the allow screen.
+      } finally {
+        if (!cancelled) setCheckingPermission(false)
+      }
+    }
+    void skipIfGranted()
+    return () => {
+      cancelled = true
+    }
+  }, [location])
 
   const savePreferences = async (categories: EventCategory[]) => {
     const sessionId = getSessionId()
@@ -53,11 +78,15 @@ export function OnboardingPage({ onComplete }: Props) {
           <p className="status location-subtitle">
             Allow location so we can show events in the next 48 hours around you.
           </p>
-          <div className="location-stack">
-            <button type="button" className="btn btn-primary large" onClick={() => void enableLocation()}>
-              Allow location access
-            </button>
-          </div>
+          {checkingPermission ? (
+            <p className="status">Checking location access…</p>
+          ) : (
+            <div className="location-stack">
+              <button type="button" className="btn btn-primary large" onClick={() => void enableLocation()}>
+                Allow location access
+              </button>
+            </div>
+          )}
           {locationError ? <p className="error">{locationError}</p> : null}
         </section>
       </div>

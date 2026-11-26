@@ -29,6 +29,10 @@ const preferenceSchema = z.object({
   categories: z.array(z.enum(categories)).min(1),
 })
 
+const resetAccountSchema = z.object({
+  sessionId: z.string().min(1),
+})
+
 const interactionSchema = z.object({
   sessionId: z.string().min(1),
   eventId: z.string().min(1),
@@ -146,6 +150,21 @@ app.post('/api/preferences', async (req, res, next) => {
       )
     }
     res.status(201).json({ success: true })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/account/reset', async (req, res, next) => {
+  try {
+    const parsed = resetAccountSchema.parse(req.body)
+    const { sessionId } = parsed
+    await run('DELETE FROM user_preferences WHERE session_id = ?', [sessionId])
+    await run('DELETE FROM user_interactions WHERE session_id = ?', [sessionId])
+    await run('DELETE FROM user_event_attendance WHERE session_id = ?', [sessionId])
+    await run('DELETE FROM user_tag_scores WHERE session_id = ?', [sessionId])
+    await run('DELETE FROM user_questionnaire_answers WHERE session_id = ?', [sessionId])
+    res.json({ success: true })
   } catch (error) {
     next(error)
   }

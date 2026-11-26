@@ -7,7 +7,7 @@ Today is a full-stack local event discovery app with a Tinder-style swipe interf
 1. **Onboarding:** the user allows location and picks interest categories.
 2. **Home:** a swipe deck of events in the next 48 hours within the user's radius. Swipe right to save, left to skip, up for details. Each swipe updates the ranking and reorders the cards still in the deck.
 3. **My Events:** an hour-by-hour calendar of saved events for the next 48 hours. Tap an event for details and add-to-calendar links, or its ✕ to remove it (this undoes the like, so the event returns to the Home deck).
-4. **Settings:** change location, distance unit (miles or km), radius, and force a fresh event refresh.
+4. **Settings:** change location, distance unit (miles or km), radius, force a fresh event refresh, or reset account data and start over.
 
 There are no accounts yet. Each browser gets a random session id stored in `localStorage` (`today.session.id`), and all preferences and swipes are tied to it.
 
@@ -73,6 +73,7 @@ Base URL locally: `http://localhost:4000/api`
 | `GET /debug/providers` | Shows whether the Ticketmaster key is loaded. |
 | `GET /preferences/:sessionId` | Saved categories for a session. |
 | `POST /preferences` | Save onboarding categories: `{ sessionId, categories }`. |
+| `POST /account/reset` | Delete this session's preferences, swipes, attendance, and taste scores: `{ sessionId }`. Shared events stay. |
 | `POST /events/sync` | Fetch events for an area: `{ sessionId, location: { latitude, longitude }, radius, unit, force? }`. Returns `cached: true` when the area was synced in the last 30 minutes; `force: true` skips the cache. |
 | `GET /events/discover` | Ranked feed. Query: `sessionId`, `latitude`, `longitude`, `radius`, `unit` (`miles` or `km`, default 25 miles). |
 | `POST /interactions` | Save a swipe: `{ sessionId, eventId, action: "like" \| "dislike" }`. |
