@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getStoredLocation,
@@ -151,6 +151,11 @@ export function SettingsPage() {
               value={radius}
               onChange={(e) => setRadius(Number(e.target.value))}
               aria-valuetext={`${radius} ${unit}`}
+              style={
+                {
+                  '--radius-ratio': String(radius / MAX_RADIUS[unit]),
+                } as CSSProperties
+              }
             />
             <div className="radius-slider-scale" aria-hidden="true">
               <span>0</span>
