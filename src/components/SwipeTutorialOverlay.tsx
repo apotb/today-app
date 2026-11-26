@@ -107,7 +107,7 @@ export function SwipeTutorialOverlay({ onComplete }: Props) {
             </div>
           ) : null}
           <div className="card-image-wrap">
-            <img src={DEMO_EVENT.image_url} alt="" className="card-image" />
+            <img src={DEMO_EVENT.image_url} alt="" className="card-image" draggable={false} />
             <div className="image-gradient" />
           </div>
           <div className="card-body">

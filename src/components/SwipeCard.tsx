@@ -142,6 +142,8 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
           src={event.image_url}
           alt={event.title}
           className="card-image"
+          draggable={false}
+          onDragStart={(dragEvent) => dragEvent.preventDefault()}
           style={{
             opacity: imageReady ? 1 : 0,
             visibility: imageReady ? 'visible' : 'hidden',
