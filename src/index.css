@@ -25,8 +25,8 @@
 }
 
 html {
-  scrollbar-gutter: stable;
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -56,7 +56,7 @@ h1,
 }
 
 .card-title,
-.modal h3,
+.event-expand-title,
 .past-title {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
@@ -91,11 +91,6 @@ a {
   z-index: 20;
 }
 
-.brand-disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
 .app-main-wrap {
   flex: 1;
   min-height: 0;
@@ -112,6 +107,9 @@ a {
   font-size: 1.35rem;
   letter-spacing: -0.03em;
   color: #007400;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
 }
 
 .brand img {
@@ -351,20 +349,6 @@ button.tutorial-dismiss {
   margin-bottom: 18px;
 }
 
-.quiz-attend-label {
-  margin: 0 0 6px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #506080;
-}
-
-.quiz-question-heading {
-  margin: 0 0 20px;
-  font-size: 1.35rem;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
 .panel {
   background: #fff;
   border-radius: 16px;
@@ -531,15 +515,29 @@ button.tutorial-dismiss {
   scroll-behavior: smooth;
 }
 
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
 .chip {
   display: inline-block;
   background: #d8f2d8;
   color: #007400;
   padding: 6px 10px;
   border-radius: 999px;
-  margin: 0 0 8px;
+  margin: 0;
   font-weight: 600;
   font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.chip-distance {
+  background: #e6e8ee;
+  color: #5c6578;
 }
 
 .card-title {
@@ -578,6 +576,11 @@ button.tutorial-dismiss {
   color: #007400;
 }
 
+.btn-danger {
+  background: #fdecec;
+  color: #9b2c2c;
+}
+
 .btn-ghost {
   background: #eef1f7;
   color: #334261;
@@ -589,12 +592,15 @@ button.tutorial-dismiss {
 }
 
 .center-page {
-  min-height: calc(100vh - 130px);
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
   display: grid;
-  place-items: center;
+  place-items: safe center;
   padding-left: max(20px, env(safe-area-inset-left, 0px));
   padding-right: max(20px, env(safe-area-inset-right, 0px));
   padding-top: max(12px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
@@ -921,6 +927,26 @@ button.tutorial-dismiss {
   text-align: center;
 }
 
+.center-page:has(.categories-step) {
+  overflow: hidden;
+}
+
+.categories-step {
+  width: min(920px, 100%);
+  max-height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 14px 12px;
+  overflow: hidden;
+}
+
+.categories-step h1 {
+  margin: 0 0 12px;
+  font-size: clamp(1.35rem, 4.2vw, 1.85rem);
+  line-height: 1.1;
+}
+
 .location-step .location-subtitle {
   max-width: 28rem;
   margin: 0 auto 1.25rem;
@@ -955,48 +981,147 @@ button.tutorial-dismiss {
   min-width: 140px;
 }
 
-.stepper {
-  color: #007400;
-  font-weight: 700;
-}
-
-.question-actions {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
 .large {
   padding: 14px 18px;
   font-size: 1rem;
 }
 
 .category-grid {
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-  margin: 16px 0 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 10px;
 }
 
 .category-card {
-  display: grid;
-  gap: 8px;
-  border: 1px solid #d9e8d9;
-  border-radius: 12px;
-  padding: 14px;
-  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  height: calc(2.45em + 2px);
+  overflow: hidden;
+  padding: 0 8px;
+  border: 1px solid #d7e6d8;
+  border-radius: 10px;
+  background: #f7fbf7;
+  color: #163024;
+  text-align: left;
+  font-size: clamp(0.68rem, 2.7vw, 0.84rem);
+  font-weight: 650;
+  line-height: 1.15;
   cursor: pointer;
+}
+
+.category-card:hover:not(:disabled) {
+  border-color: #8dcea0;
+  background: #fff;
+}
+
+.category-card:focus-visible {
+  outline: 2px solid #00b100;
+  outline-offset: 1px;
 }
 
 .category-card.active {
   border-color: #00b100;
-  box-shadow: 0 0 0 1px #00b100 inset;
-  background: #f2fff2;
+  background: #e8f9e8;
+  color: #087008;
+  box-shadow: inset 0 0 0 1px #00b100;
 }
 
-.emoji {
-  font-size: 1.5rem;
+.category-card .emoji {
+  flex: none;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.category-name {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.categories-continue {
+  flex: none;
+  width: min(100%, 280px);
+  align-self: center;
+  padding: 11px 16px;
+}
+
+@media (max-width: 719px) {
+  .categories-step {
+    padding: 10px 10px 8px;
+  }
+
+  .categories-step h1 {
+    margin-bottom: 8px;
+    font-size: 1.35rem;
+  }
+
+  .category-grid {
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .category-card {
+    padding: 0 7px;
+    gap: 5px;
+    font-size: 0.72rem;
+    border-radius: 9px;
+  }
+
+  .category-card .emoji {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 719px) and (max-height: 620px) {
+  .center-page:has(.categories-step) {
+    padding: 6px;
+  }
+
+  .categories-step {
+    padding: 8px 8px 6px;
+  }
+
+  .categories-step h1 {
+    margin-bottom: 6px;
+  }
+
+  .category-grid {
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+
+  .category-card {
+    font-size: 0.68rem;
+    padding: 0 6px;
+  }
+
+  .categories-continue {
+    padding: 8px 12px;
+  }
+}
+
+@media (min-width: 720px) {
+  .categories-step {
+    padding: 18px 20px 16px;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .category-card {
+    font-size: 0.86rem;
+    padding: 0 12px;
+    gap: 8px;
+  }
 }
 
 .events-calendar-subtitle {
@@ -1296,6 +1421,10 @@ button.tutorial-dismiss {
   font-weight: 700;
 }
 
+.settings-panel h2:not(:has(+ p)) {
+  margin-bottom: 12px;
+}
+
 .settings-panel p {
   margin: 0 0 12px;
   color: #506080;
@@ -1308,12 +1437,91 @@ button.tutorial-dismiss {
   padding: 8px 14px;
 }
 
-.settings-actions {
+.settings-action-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
+}
+
+.settings-action-row .btn {
+  flex-shrink: 0;
+}
+
+.settings-actions {
   margin-top: 10px;
+}
+
+.settings-panel .settings-inline-status {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.settings-reset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.settings-reset .btn {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.settings-reset-backdrop {
+  z-index: 80;
+  padding:
+    calc(20px + env(safe-area-inset-top, 0px))
+    calc(20px + env(safe-area-inset-right, 0px))
+    calc(20px + env(safe-area-inset-bottom, 0px))
+    calc(20px + env(safe-area-inset-left, 0px));
+}
+
+.settings-reset-dialog {
+  width: min(360px, 100%);
+  background: #fff;
+  border: 1px solid #e4e8f1;
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 16px 40px rgba(15, 32, 70, 0.18);
+}
+
+.settings-reset-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #10213f;
+}
+
+.settings-reset-dialog p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.settings-reset-dialog #reset-account-desc {
+  color: #506080;
+}
+
+.settings-reset-dialog .error {
+  margin: 12px 0 0;
+  color: #ac1d38;
+}
+
+.settings-reset-dialog-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.settings-reset-dialog-actions .btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 12px;
 }
 
 .unit-toggle {
@@ -1360,13 +1568,100 @@ button.tutorial-dismiss {
   font-size: 1rem;
 }
 
+/* Drawn by hand so the fill and thumb stay one green. The native accent-color
+   control lights up the track and the thumb separately, and darkens only when
+   the press starts on the thumb. */
 .radius-slider input {
+  --slider-fill: #00b100;
+  --slider-track: #e4e8f1;
+  --thumb-size: 18px;
+  --track-size: 4px;
   display: block;
   width: 100%;
   height: 28px;
   margin: 2px 0 0;
-  accent-color: #00b100;
-  cursor: pointer;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: grab;
+}
+
+.radius-slider input:active {
+  cursor: grabbing;
+}
+
+.radius-slider input:focus {
+  outline: none;
+}
+
+.radius-slider input:focus-visible {
+  outline: 2px solid #00b100;
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.radius-slider input::-webkit-slider-runnable-track {
+  height: var(--track-size);
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--slider-fill) 0,
+    var(--slider-fill)
+      calc(var(--thumb-size) / 2 + (100% - var(--thumb-size)) * var(--radius-ratio, 0)),
+    var(--slider-track)
+      calc(var(--thumb-size) / 2 + (100% - var(--thumb-size)) * var(--radius-ratio, 0)),
+    var(--slider-track) 100%
+  );
+}
+
+.radius-slider input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  margin-top: calc((var(--track-size) - var(--thumb-size)) / 2);
+  border: 0;
+  border-radius: 50%;
+  background: var(--slider-fill);
+  box-shadow: 0 1px 3px rgba(15, 32, 70, 0.22);
+}
+
+.radius-slider input::-moz-range-track {
+  height: var(--track-size);
+  border: 0;
+  border-radius: 999px;
+  background: var(--slider-track);
+}
+
+.radius-slider input::-moz-range-progress {
+  height: var(--track-size);
+  border: 0;
+  border-radius: 999px;
+  background: var(--slider-fill);
+}
+
+.radius-slider input::-moz-range-thumb {
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  border: 0;
+  border-radius: 50%;
+  background: var(--slider-fill);
+  box-shadow: 0 1px 3px rgba(15, 32, 70, 0.22);
+}
+
+.radius-slider input:is(:hover, :active)::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 5px rgba(0, 177, 0, 0.16),
+    0 1px 3px rgba(15, 32, 70, 0.22);
+}
+
+.radius-slider input:is(:hover, :active)::-moz-range-thumb {
+  box-shadow:
+    0 0 0 5px rgba(0, 177, 0, 0.16),
+    0 1px 3px rgba(15, 32, 70, 0.22);
 }
 
 .radius-slider-scale {
@@ -1460,6 +1755,214 @@ a.modal-cal-btn {
   border-radius: 10px;
 }
 
+.swipe-card.is-concealed {
+  visibility: hidden;
+}
+
+.card-details-btn {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 10px;
+  width: 36px;
+  height: 36px;
+  margin-left: -18px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  color: #10213f;
+  box-shadow: 0 8px 18px rgba(15, 32, 70, 0.18);
+  cursor: pointer;
+}
+
+button.card-details-btn:hover {
+  background: #fff;
+}
+
+.event-expand {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.event-expand-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* The close animation owns scrollTop. Anchoring would pin the text and then jump. */
+  overflow-anchor: none;
+}
+
+.event-expand-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Overflow hidden while shrinking, so the scrollbar doesn't flash as the page
+   becomes a card. scrollTop is still animated back to the top. */
+.event-expand.is-closing .event-expand-scroll {
+  overflow: hidden;
+}
+
+.event-expand-hero {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #e8eef8;
+}
+
+.event-expand-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.event-expand-close {
+  position: absolute;
+  z-index: 7;
+  top: 12px;
+  left: 12px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  color: #10213f;
+  box-shadow: 0 8px 20px rgba(15, 32, 70, 0.16);
+  cursor: pointer;
+}
+
+.event-expand-close:disabled {
+  cursor: default;
+}
+
+.event-expand-up {
+  pointer-events: none;
+}
+
+.event-expand-nav,
+.event-expand-nav .image-nav-btn {
+  pointer-events: none;
+}
+
+.event-expand-body {
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: 14px 16px 28px;
+}
+
+.event-expand-body.has-actions {
+  padding-bottom: 118px;
+}
+
+.event-expand-title {
+  margin: 0 0 8px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.event-expand-desc {
+  display: grid;
+  /* One margin, matching the card paragraph. Inner margins would stack on
+     top of the price gap, because a grid doesn't collapse them. */
+  margin: 16px 0;
+}
+
+.event-expand-desc > .description {
+  grid-area: 1 / 1;
+  align-self: start;
+  margin: 0;
+}
+
+/* The deck card shows two lines. That copy fades in over the full text on
+   close so the handoff doesn't recut the paragraph. */
+.event-expand .description-preview {
+  -webkit-line-clamp: 2;
+  pointer-events: none;
+}
+
+.event-expand-extra {
+  overflow: hidden;
+  max-height: 800px;
+}
+
+.event-expand.is-closing .event-expand-extra {
+  max-height: 0;
+  pointer-events: none;
+  transition: max-height 0.28s ease;
+}
+
+.event-expand-actions {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 36px;
+  padding: 28px 16px 16px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.98) 55%, rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.expand-action {
+  pointer-events: auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  border: 1px solid #e4e8f1;
+  background: #fff;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 32, 70, 0.12);
+}
+
+.expand-action:hover {
+  transform: scale(1.05);
+}
+
+.expand-action:active {
+  transform: scale(0.96);
+}
+
+.expand-action:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+
+.expand-action.nope {
+  color: #cf2c2c;
+}
+
+.expand-action.like {
+  color: #00b100;
+}
+
 .error {
   color: #ac1d38;
 }
@@ -1479,10 +1982,6 @@ a.modal-cal-btn {
 }
 
 @media (max-width: 760px) {
-  .question-actions {
-    grid-template-columns: 1fr;
-  }
-
   .attendance-actions {
     flex-direction: column;
   }

@@ -7,7 +7,7 @@ import { formatTime12h } from '../lib/format'
 type Props = {
   events: EventItem[]
   nowMs: number
-  onSelect: (event: EventItem) => void
+  onSelect: (event: EventItem, block: HTMLElement) => void
   onRemove: (event: EventItem) => void
 }
 
@@ -116,6 +116,7 @@ export function EventCalendar({ events, nowMs, onSelect, onRemove }: Props) {
                     <div
                       key={block.event.id}
                       className="cal-event"
+                      data-event-id={block.event.id}
                       style={
                         {
                           top: toPx(block.startMs - day.startMs) + 1,
@@ -129,7 +130,10 @@ export function EventCalendar({ events, nowMs, onSelect, onRemove }: Props) {
                       <button
                         type="button"
                         className="cal-event-open"
-                        onClick={() => onSelect(block.event)}
+                        onClick={(e) => {
+                          const blockEl = e.currentTarget.closest('.cal-event')
+                          if (blockEl instanceof HTMLElement) onSelect(block.event, blockEl)
+                        }}
                       >
                         <span className="cal-event-title">{block.event.title}</span>
                         <span className="cal-event-meta">

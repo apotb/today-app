@@ -24,7 +24,6 @@ export const CATEGORY_TAGS = {
   markets: ['market', 'vendors', 'local-shopping'],
   'religious-spiritual': ['spiritual', 'faith', 'community-gathering'],
   'activism-politics': ['activism', 'civic', 'causes'],
-  'travel-exploration': ['travel', 'exploration', 'adventure'],
 }
 
 export const tagsForCategory = (category) =>

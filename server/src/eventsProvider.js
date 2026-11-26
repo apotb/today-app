@@ -6,6 +6,7 @@ import {
   professionalizeTitle,
   ticketmasterCostFromApi,
 } from './eventPresentation.js'
+import { buildTasteTags } from './taste.js'
 
 const FEED_RANGE_MS = 48 * 60 * 60 * 1000
 
@@ -60,6 +61,8 @@ const normalizeTicketmasterEvent = (event) => {
   const lng = venue?.location?.longitude != null ? Number(venue.location.longitude) : null
 
   const info = [event?.info, event?.pleaseNote].filter(Boolean).join(' ').trim()
+  // Missing Ticketmaster prices stay null so the UI does not show them as free.
+  const cost = ticketmasterCostFromApi(event)
 
   return {
     id: `tm_${event.id ?? randomUUID()}`,
@@ -67,8 +70,7 @@ const normalizeTicketmasterEvent = (event) => {
     description: professionalizeDescription(info),
     startsAt: start,
     endsAt: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
-    // Missing Ticketmaster prices stay null so the UI does not show them as free.
-    cost: ticketmasterCostFromApi(event),
+    cost,
     imageUrl: image ?? null,
     category: mapCategory(categoryRaw),
     location: venue?.name ?? 'Local Venue',
@@ -78,7 +80,12 @@ const normalizeTicketmasterEvent = (event) => {
     longitude: Number.isFinite(lng) ? lng : null,
     provider: 'ticketmaster',
     organizerKey: organizerKey ? String(organizerKey) : null,
-    tags: [],
+    tags: buildTasteTags({
+      genre: classification?.genre?.name,
+      subgenre: classification?.subGenre?.name,
+      localTime: event?.dates?.start?.localTime,
+      cost,
+    }),
   }
 }
 

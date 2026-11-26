@@ -1,22 +1,51 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { motion, useAnimation, useMotionValue, useTransform, type PanInfo } from 'framer-motion'
 import type { EventItem } from '../types/models'
 import { formatDateTime12h, formatPrice } from '../lib/format'
-import { categoryLabel } from '../lib/eventActions'
+import type { ExpandOrigin } from './EventExpandPage'
+import { EventBadges } from './EventBadges'
 
 type Props = {
   event: EventItem
   onSwipe: (direction: 'left' | 'right') => Promise<void> | void
-  onOpenDetails?: () => void
+  onOpenDetails?: (origin: ExpandOrigin) => void
   showDesktopNav?: boolean
   /** Fills viewport height on Home (mobile deck layout). */
   deckLayout?: boolean
+  /** Hide the card while its expanded page is opening or flying off. */
+  concealed?: boolean
+  /** Expanded details are open, so this card should ignore swipes and arrow keys. */
+  detailsOpen?: boolean
 }
 
 const SWIPE_THRESHOLD = 120
 const SWIPE_UP_THRESHOLD = 72
 
-export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckLayout }: Props) {
+function ChevronUp() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M6 14.5 12 8.5l6 6"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function SwipeCard({
+  event,
+  onSwipe,
+  onOpenDetails,
+  showDesktopNav,
+  deckLayout,
+  concealed,
+  detailsOpen,
+}: Props) {
+  const articleRef = useRef<HTMLElement>(null)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   const controls = useAnimation()
@@ -60,17 +89,38 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
     [animating, imageReady, onSwipe, controls, x, y],
   )
 
+  const openDetails = useCallback(() => {
+    const el = articleRef.current
+    if (!el || !imageReady || animating || !onOpenDetails) return
+    const rect = el.getBoundingClientRect()
+    const image = el.querySelector('.card-image-wrap')?.getBoundingClientRect()
+    const origin: ExpandOrigin = {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      radius: 18,
+      imageHeight: image?.height ?? rect.height * 0.55,
+      fadeContent: false,
+    }
+    // Paint the expanding page on top of this card before the drag snaps back.
+    flushSync(() => onOpenDetails(origin))
+  }, [animating, imageReady, onOpenDetails])
+
+  // The card stays put under the page. Reset any leftover drag while it's hidden.
+  useLayoutEffect(() => {
+    if (!concealed) return
+    x.set(0)
+    y.set(0)
+    controls.set({ x: 0, y: 0, rotate: 0, opacity: 1 })
+  }, [concealed, controls, x, y])
+
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (!imageReady) return
+    if (!imageReady || detailsOpen) return
     const ox = info.offset.x
     const oy = info.offset.y
     if (oy < -SWIPE_UP_THRESHOLD && Math.abs(oy) >= Math.abs(ox)) {
-      void Promise.resolve().then(() => {
-        x.set(0)
-        y.set(0)
-        controls.set({ x: 0, y: 0, rotate: 0, opacity: 1 })
-      })
-      onOpenDetails?.()
+      openDetails()
       return
     }
     if (ox > SWIPE_THRESHOLD) {
@@ -83,7 +133,7 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
   }
 
   useEffect(() => {
-    if (!showDesktopNav) return
+    if (!showDesktopNav || detailsOpen) return
 
     const isTypingTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false
@@ -103,21 +153,27 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault()
-        if (imageReady) onOpenDetails?.()
+        openDetails()
       }
     }
 
     window.addEventListener('keydown', onKeyDown, { passive: false })
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [showDesktopNav, onOpenDetails, imageReady, triggerSwipe])
+  }, [showDesktopNav, detailsOpen, openDetails, triggerSwipe])
 
-  const cardClass = deckLayout ? 'swipe-card home-deck-card' : 'swipe-card'
+  const cardClass = [
+    deckLayout ? 'swipe-card home-deck-card' : 'swipe-card',
+    concealed ? 'is-concealed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <motion.article
+      ref={articleRef}
       className={cardClass}
       style={{ x, y, rotate }}
-      drag={animating || !imageReady ? false : true}
+      drag={animating || !imageReady || detailsOpen ? false : true}
       dragElastic={0.88}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       onDragEnd={handleDragEnd}
@@ -154,6 +210,17 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
           onError={() => setImageReady(true)}
         />
         <div className="image-gradient" />
+        {onOpenDetails ? (
+          <button
+            type="button"
+            className="card-details-btn"
+            aria-label="Show details"
+            onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
+            onClick={openDetails}
+          >
+            <ChevronUp />
+          </button>
+        ) : null}
         {showDesktopNav ? (
           <div className="image-nav" aria-hidden="false">
             <button
@@ -191,7 +258,7 @@ export function SwipeCard({ event, onSwipe, onOpenDetails, showDesktopNav, deckL
         ) : null}
       </div>
       <div className="card-body" style={{ opacity: imageReady ? 1 : 0 }}>
-        <p className="chip">{categoryLabel(event.category)}</p>
+        <EventBadges event={event} />
         <h2 className="card-title">{event.title}</h2>
         <p>{formatDateTime12h(event.starts_at)}</p>
         <p>{event.location}</p>

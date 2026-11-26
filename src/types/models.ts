@@ -23,18 +23,9 @@ export const CATEGORY_OPTIONS = [
   { id: 'markets', name: 'Markets', icon: '🛍️' },
   { id: 'religious-spiritual', name: 'Religious & Spiritual', icon: '🕊️' },
   { id: 'activism-politics', name: 'Activism & Politics', icon: '📣' },
-  { id: 'travel-exploration', name: 'Travel & Exploration', icon: '🧭' },
 ] as const
 
 export type EventCategory = (typeof CATEGORY_OPTIONS)[number]['id']
-
-export type QuestionItem = {
-  id: string
-  prompt: string
-  categories: EventCategory[]
-  /** Semantic tags used for personalization scoring */
-  tags: string[]
-}
 
 export type EventItem = {
   id: string
@@ -51,5 +42,9 @@ export type EventItem = {
   /** Same series / recurring show; used to hide other showtimes after a like */
   series_key?: string | null
   attendance_status?: 'attended' | 'missed' | null
+  latitude?: number | null
+  longitude?: number | null
+  /** Miles from the location sent with discover. Used when coordinates are missing. */
+  distanceMiles?: number | null
   score?: number
 }

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api/client'
-import { EventDetailsModal } from '../components/EventDetailsModal'
+import { EventExpandPage, type ExpandOrigin } from '../components/EventExpandPage'
 import { SwipeCard } from '../components/SwipeCard'
 import { SwipeTutorialOverlay } from '../components/SwipeTutorialOverlay'
 import { useNavigationHints } from '../components/NavigationHintsContext'
@@ -17,6 +17,12 @@ import { TUTORIAL_SWIPE_KEY } from '../lib/onboardingStorage'
 import { VibeChips } from '../components/VibeChips'
 import { filterByVibes, getStoredVibes, saveStoredVibes, type VibeId } from '../lib/vibes'
 
+const seriesDedupeKey = (event: EventItem) => {
+  const seriesKey = event.series_key?.trim()
+  if (seriesKey) return `s:${seriesKey}`
+  return `f:${event.title.trim().toLowerCase()}|${event.location.trim().toLowerCase()}`
+}
+
 export function HomePage() {
   const { notifyFirstLike, setSwipeTutorialActive } = useNavigationHints()
   const [events, setEvents] = useState<EventItem[]>([])
@@ -26,7 +32,9 @@ export function HomePage() {
   const [tutorialDismissed, setTutorialDismissed] = useState(
     () => localStorage.getItem(TUTORIAL_SWIPE_KEY) === '1',
   )
-  const [detailEvent, setDetailEvent] = useState<EventItem | null>(null)
+  const [detail, setDetail] = useState<{ event: EventItem; origin: ExpandOrigin } | null>(null)
+  const [cardConcealed, setCardConcealed] = useState(false)
+  const deckRef = useRef<HTMLDivElement>(null)
   const [vibes, setVibes] = useState<VibeId[]>(getStoredVibes)
   // "Tonight" is judged against the time the feed was loaded.
   const [loadedAtMs, setLoadedAtMs] = useState(() => Date.now())
@@ -37,6 +45,11 @@ export function HomePage() {
   } | null>(null)
   const [undoing, setUndoing] = useState(false)
   const isDesktop = useIsDesktop()
+  // Bumps on every deck load, swipe, and undo so a slow discover response cannot
+  // overwrite a newer order.
+  const rankGen = useRef(0)
+  // Other showtimes of a liked series stay hidden until that like is undone or the deck reloads.
+  const hiddenSeries = useRef(new Set<string>())
 
   useEffect(() => {
     document.documentElement.classList.add('page-home')
@@ -44,6 +57,7 @@ export function HomePage() {
   }, [])
 
   const loadEvents = useCallback(async () => {
+    const gen = ++rankGen.current
     setLoading(true)
     setError('')
     setSwipeError('')
@@ -61,6 +75,8 @@ export function HomePage() {
         settings.radius,
         settings.unit,
       )
+      if (gen !== rankGen.current) return
+      hiddenSeries.current = new Set()
       setEvents(list)
       setLoadedAtMs(Date.now())
     } catch (e) {
@@ -93,17 +109,53 @@ export function HomePage() {
     saveStoredVibes(next)
   }
 
-  const seriesDedupeKey = (e: EventItem) => {
-    const sk = e.series_key?.trim()
-    if (sk) return `s:${sk}`
-    return `f:${e.title.trim().toLowerCase()}|${e.location.trim().toLowerCase()}`
+  const rerankRemaining = async (pinFront: EventItem[] | null) => {
+    const gen = ++rankGen.current
+    try {
+      const settings = getStoredDiscoverySettings()
+      const loc = getStoredLocation()
+      if (!loc) return
+      const { events: list } = await api.discoverEvents(
+        getSessionId(),
+        loc,
+        settings.radius,
+        settings.unit,
+      )
+      if (gen !== rankGen.current) return
+      const ranked = list.filter((event) => !hiddenSeries.current.has(seriesDedupeKey(event)))
+      if (pinFront?.length) {
+        const pinIds = new Set(pinFront.map((event) => event.id))
+        setEvents([...pinFront, ...ranked.filter((event) => !pinIds.has(event.id))])
+      } else {
+        setEvents(ranked)
+      }
+    } catch {
+      // The swipe is already saved. Keep the optimistic order if this refresh fails.
+    }
   }
 
-  const swipe = async (direction: 'left' | 'right') => {
-    if (!current) return
+  const measureCard = (): ExpandOrigin | null => {
+    const el = deckRef.current?.querySelector('.swipe-card')
+    if (!(el instanceof HTMLElement)) return null
+    const rect = el.getBoundingClientRect()
+    const image = el.querySelector('.card-image-wrap')?.getBoundingClientRect()
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      radius: 18,
+      imageHeight: image?.height ?? rect.height * 0.55,
+      fadeContent: false,
+    }
+  }
+
+  const swipe = async (direction: 'left' | 'right', event?: EventItem) => {
+    const target = event ?? current
+    if (!target) return
     const action = direction === 'right' ? 'like' : 'dislike'
     try {
-      await api.submitInteraction(getSessionId(), current.id, action)
+      await api.submitInteraction(getSessionId(), target.id, action)
     } catch (e) {
       setSwipeError("Couldn't save that swipe. Check your connection and try again.")
       // Rethrow so SwipeCard animates the card back into place.
@@ -115,14 +167,16 @@ export function HomePage() {
     // Remove by id rather than position: with vibes on, the card shown isn't
     // necessarily the first event in the full list. A like also removes other
     // showtimes of the same series.
-    const likedKey = direction === 'right' ? seriesDedupeKey(current) : null
+    const likedKey = direction === 'right' ? seriesDedupeKey(target) : null
+    if (likedKey) hiddenSeries.current.add(likedKey)
     const removed = [
-      current,
-      ...events.filter((e) => e.id !== current.id && likedKey && seriesDedupeKey(e) === likedKey),
+      target,
+      ...events.filter((e) => e.id !== target.id && likedKey && seriesDedupeKey(e) === likedKey),
     ]
     const removedIds = new Set(removed.map((e) => e.id))
     setEvents((prev) => prev.filter((e) => !removedIds.has(e.id)))
     setLastSwipe({ action, removed })
+    void rerankRemaining(null)
   }
 
   const undoLastSwipe = async () => {
@@ -131,11 +185,15 @@ export function HomePage() {
     setUndoing(true)
     try {
       await api.undoInteraction(getSessionId(), event.id, lastSwipe.action)
+      if (lastSwipe.action === 'like') {
+        for (const restored of lastSwipe.removed) hiddenSeries.current.delete(seriesDedupeKey(restored))
+      }
       const restoredIds = new Set(lastSwipe.removed.map((e) => e.id))
       // Put the cards back on top of the deck, the undone one first.
       setEvents((prev) => [...lastSwipe.removed, ...prev.filter((e) => !restoredIds.has(e.id))])
       setLastSwipe(null)
       setSwipeError('')
+      void rerankRemaining(lastSwipe.removed)
     } catch {
       setSwipeError("Couldn't undo that swipe. Check your connection and try again.")
     } finally {
@@ -202,14 +260,19 @@ export function HomePage() {
         </p>
       ) : null}
       {!showTutorial && current ? (
-        <div className="home-deck">
+        <div className="home-deck" ref={deckRef}>
           <SwipeCard
             key={current.id}
             event={current}
             onSwipe={swipe}
-            onOpenDetails={() => setDetailEvent(current)}
+            onOpenDetails={(origin) => {
+              setDetail({ event: current, origin })
+              setCardConcealed(true)
+            }}
             showDesktopNav={isDesktop}
             deckLayout
+            concealed={cardConcealed}
+            detailsOpen={detail !== null}
           />
         </div>
       ) : null}
@@ -229,8 +292,20 @@ export function HomePage() {
           </button>
         </section>
       ) : null}
-      {detailEvent ? (
-        <EventDetailsModal event={detailEvent} onClose={() => setDetailEvent(null)} />
+      {detail ? (
+        <EventExpandPage
+          event={detail.event}
+          origin={detail.origin}
+          measureOrigin={measureCard}
+          onOpened={() => setCardConcealed(false)}
+          onFlyStart={() => setCardConcealed(true)}
+          onFlyCancel={() => setCardConcealed(false)}
+          onExited={() => {
+            setDetail(null)
+            setCardConcealed(false)
+          }}
+          onSwipe={(direction) => swipe(direction, detail.event)}
+        />
       ) : null}
     </div>
   )
