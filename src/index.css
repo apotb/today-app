@@ -1311,6 +1311,10 @@ button.tutorial-dismiss {
   font-weight: 700;
 }
 
+.settings-panel h2:not(:has(+ p)) {
+  margin-bottom: 12px;
+}
+
 .settings-panel p {
   margin: 0 0 12px;
   color: #506080;

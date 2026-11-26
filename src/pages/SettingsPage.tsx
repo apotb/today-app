@@ -85,27 +85,7 @@ export function SettingsPage() {
       ) : null}
       <div className="settings-stack">
         <section className="panel settings-panel">
-          <h2>Location</h2>
-          <p>Events use your device location (next 48 hours, within your radius).</p>
-          <button type="button" className="btn btn-primary" onClick={() => void enableLocation()}>
-            Update location
-          </button>
-        </section>
-        <section className="panel settings-panel">
-          <h2>Event feed</h2>
-          <p>Re-run sync with your saved location and radius (48-hour window).</p>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={feedRefreshing}
-            onClick={() => void refreshEventFeed()}
-          >
-            {feedRefreshing ? 'Refreshing…' : 'Refresh event feed'}
-          </button>
-        </section>
-        <section className="panel settings-panel">
           <h2>Distance unit</h2>
-          <p>Miles or kilometers. Event distances and the discovery radius both use this.</p>
           <div className="unit-toggle" role="group" aria-label="Distance unit">
             <button
               type="button"
@@ -127,7 +107,6 @@ export function SettingsPage() {
         </section>
         <section className="panel settings-panel">
           <h2>Discovery radius</h2>
-          <p>How far from your location we search for events.</p>
           <div className="radius-slider">
             <div className="radius-slider-label">
               <label htmlFor="discovery-radius">Distance</label>
@@ -155,6 +134,25 @@ export function SettingsPage() {
               Save radius
             </button>
           </div>
+        </section>
+        <section className="panel settings-panel">
+          <h2>Location</h2>
+          <p>Useful if you're seeing events far away from you.</p>
+          <button type="button" className="btn btn-secondary" onClick={() => void enableLocation()}>
+            Update location
+          </button>
+        </section>
+        <section className="panel settings-panel">
+          <h2>Event feed</h2>
+          <p>Useful if events look missing or out of date.</p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={feedRefreshing}
+            onClick={() => void refreshEventFeed()}
+          >
+            {feedRefreshing ? 'Refreshing…' : 'Refresh event feed'}
+          </button>
         </section>
       </div>
     </div>
