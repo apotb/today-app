@@ -565,9 +565,6 @@ export function EventExpandPage({
               Add to Apple Calendar
             </a>
           </div>
-          <p className="modal-cal-note">
-            Apple Calendar uses a standard .ics file (opens in Calendar on most devices).
-          </p>
           </motion.div>
         </motion.div>
         </motion.div>
