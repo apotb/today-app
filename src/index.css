@@ -1437,12 +1437,26 @@ button.tutorial-dismiss {
   padding: 8px 14px;
 }
 
-.settings-actions {
+.settings-action-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
+}
+
+.settings-action-row .btn {
+  flex-shrink: 0;
+}
+
+.settings-actions {
   margin-top: 10px;
+}
+
+.settings-panel .settings-inline-status {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.92rem;
+  line-height: 1.3;
 }
 
 .settings-reset {

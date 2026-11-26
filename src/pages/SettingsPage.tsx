@@ -20,7 +20,7 @@ export function SettingsPage() {
   const existingDiscovery = getStoredDiscoverySettings()
   const [radius, setRadius] = useState(existingDiscovery.radius)
   const [unit, setUnit] = useState<DistanceUnit>(existingDiscovery.unit)
-  const [message, setMessage] = useState('')
+  const [confirmation, setConfirmation] = useState<'radius' | 'location' | 'feed' | null>(null)
   const [error, setError] = useState('')
   const [feedRefreshing, setFeedRefreshing] = useState(false)
   const [confirmingReset, setConfirmingReset] = useState(false)
@@ -30,7 +30,7 @@ export function SettingsPage() {
   const saveRadius = () => {
     saveDiscoverySettings({ radius, unit })
     setError('')
-    setMessage('Discovery radius saved.')
+    setConfirmation('radius')
   }
 
   const changeUnit = (next: DistanceUnit) => {
@@ -40,7 +40,6 @@ export function SettingsPage() {
     setUnit(next)
     saveDiscoverySettings({ radius: nextRadius, unit: next })
     setError('')
-    setMessage('Distance unit saved.')
   }
 
   const enableLocation = async () => {
@@ -48,8 +47,9 @@ export function SettingsPage() {
       const location = await requestBrowserLocation()
       saveStoredLocation(location)
       setError('')
-      setMessage('Location updated.')
+      setConfirmation('location')
     } catch (e) {
+      setConfirmation((current) => (current === 'location' ? null : current))
       setError(e instanceof Error ? e.message : 'Unable to enable location.')
     }
   }
@@ -57,6 +57,7 @@ export function SettingsPage() {
   const refreshEventFeed = async () => {
     const loc = getStoredLocation()
     if (!loc) {
+      setConfirmation((current) => (current === 'feed' ? null : current))
       setError('Allow location first, then refresh.')
       return
     }
@@ -66,8 +67,9 @@ export function SettingsPage() {
       const settings = getStoredDiscoverySettings()
       await api.syncEvents(getSessionId(), loc, settings.radius, settings.unit, true)
       dispatchFeedRefresh()
-      setMessage('Event feed refreshed. Open Home to see updates.')
+      setConfirmation('feed')
     } catch (e) {
+      setConfirmation((current) => (current === 'feed' ? null : current))
       setError(e instanceof Error ? e.message : 'Could not refresh feed.')
     } finally {
       setFeedRefreshing(false)
@@ -87,7 +89,7 @@ export function SettingsPage() {
   const resetAccount = async () => {
     setResetting(true)
     setError('')
-    setMessage('')
+    setConfirmation(null)
     try {
       await api.resetAccount(getSessionId())
       resetLocalAccount()
@@ -101,11 +103,6 @@ export function SettingsPage() {
   return (
     <div className="page settings-page">
       <h1>Settings</h1>
-      {message ? (
-        <p className="status settings-feedback" role="status">
-          {message}
-        </p>
-      ) : null}
       {error ? (
         <p className="error settings-feedback" role="alert">
           {error}
@@ -162,30 +159,49 @@ export function SettingsPage() {
               <span>{MAX_RADIUS[unit]}</span>
             </div>
           </div>
-          <div className="settings-actions">
+          <div className="settings-actions settings-action-row">
             <button type="button" className="btn btn-primary" onClick={saveRadius}>
               Save radius
             </button>
+            {confirmation === 'radius' ? (
+              <p className="status settings-inline-status" role="status">
+                Discovery radius saved.
+              </p>
+            ) : null}
           </div>
         </section>
         <section className="panel settings-panel">
           <h2>Location</h2>
           <p>Useful if you're seeing events far away from you.</p>
-          <button type="button" className="btn btn-secondary" onClick={() => void enableLocation()}>
-            Update location
-          </button>
+          <div className="settings-action-row">
+            <button type="button" className="btn btn-secondary" onClick={() => void enableLocation()}>
+              Update location
+            </button>
+            {confirmation === 'location' ? (
+              <p className="status settings-inline-status" role="status">
+                Location updated.
+              </p>
+            ) : null}
+          </div>
         </section>
         <section className="panel settings-panel">
           <h2>Event feed</h2>
           <p>Useful if events look missing or out of date.</p>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={feedRefreshing}
-            onClick={() => void refreshEventFeed()}
-          >
-            {feedRefreshing ? 'Refreshing…' : 'Refresh event feed'}
-          </button>
+          <div className="settings-action-row">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={feedRefreshing}
+              onClick={() => void refreshEventFeed()}
+            >
+              {feedRefreshing ? 'Refreshing…' : 'Refresh event feed'}
+            </button>
+            {confirmation === 'feed' ? (
+              <p className="status settings-inline-status" role="status">
+                Event feed refreshed.
+              </p>
+            ) : null}
+          </div>
         </section>
       </div>
       <div className="settings-reset">
