@@ -79,6 +79,46 @@ const SYNC_FRESH_MS = 30 * 60 * 1000
  * Identifies a synced area. Coordinates are rounded to 2 decimals (~1 km), so
  * nearby users and small GPS jitter share the same cached sync.
  */
+/*
+ * Limits on calls to Ticketmaster, which has a daily request quota. Without them,
+ * anyone could call POST /api/events/sync with force: true in a loop (or vary their
+ * location to make every call a new area) and use up the quota for everyone.
+ * Both limits are in memory, so they reset when the server restarts.
+ */
+/** One provider fetch per area per minute, even when forced. */
+const AREA_FETCH_COOLDOWN_MS = 60 * 1000
+/** At most this many provider fetches per hour across all users and areas. */
+const MAX_PROVIDER_FETCHES_PER_HOUR = 120
+const HOUR_MS = 60 * 60 * 1000
+
+/** area key -> time of the last provider fetch for that area */
+const lastAreaFetchAt = new Map()
+/** times of provider fetches in the last hour */
+let recentProviderFetches = []
+
+/**
+ * Returns true and records the fetch if the providers may be called for this area
+ * now; returns false if the area was fetched within the cooldown or the hourly
+ * budget is used up.
+ */
+const takeProviderFetch = (areaKey, nowMs = Date.now()) => {
+  const last = lastAreaFetchAt.get(areaKey)
+  if (last != null && nowMs - last < AREA_FETCH_COOLDOWN_MS) return false
+
+  recentProviderFetches = recentProviderFetches.filter((t) => nowMs - t < HOUR_MS)
+  if (recentProviderFetches.length >= MAX_PROVIDER_FETCHES_PER_HOUR) return false
+
+  recentProviderFetches.push(nowMs)
+  lastAreaFetchAt.set(areaKey, nowMs)
+  // Keep the map small: forget areas fetched longer ago than the cooldown.
+  if (lastAreaFetchAt.size > 1000) {
+    for (const [key, t] of lastAreaFetchAt) {
+      if (nowMs - t >= AREA_FETCH_COOLDOWN_MS) lastAreaFetchAt.delete(key)
+    }
+  }
+  return true
+}
+
 const syncAreaKey = (latitude, longitude, radius, unit) =>
   `${Number(latitude).toFixed(2)},${Number(longitude).toFixed(2)}|${radius}${unit}`
 
@@ -273,6 +313,13 @@ app.post('/api/events/sync', async (req, res, next) => {
         res.json({ success: true, imported: 0, cached: true })
         return
       }
+    }
+
+    // Rate limit (applies to forced syncs too). The feed still loads from the events
+    // already stored, so callers just get a cached response.
+    if (!takeProviderFetch(areaKey)) {
+      res.json({ success: true, imported: 0, cached: true, limited: true })
+      return
     }
 
     const fetchedEvents = await fetchExternalEvents({
