@@ -6,33 +6,40 @@ import { OnboardingPage } from './pages/OnboardingPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { getSessionId } from './lib/session'
 import { api } from './api/client'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 function App() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
 
+  // Bumped by Retry to run the startup check again.
+  const [attempt, setAttempt] = useState(0)
+
   // Decide between onboarding and the app from the saved preferences. A new session
   // gets an empty list back; a failed request means the server couldn't be reached,
   // which must not be mistaken for a new user (that would send a returning user back
   // through onboarding).
-  const loadSession = useCallback(async () => {
-    try {
-      const response = await api.getPreferences(getSessionId())
-      setNeedsOnboarding(response.preferences.length === 0)
-      setStatus('ready')
-    } catch {
-      setStatus('error')
-    }
-  }, [])
-
   useEffect(() => {
-    void loadSession()
-  }, [loadSession])
+    let cancelled = false
+    const run = async () => {
+      try {
+        const response = await api.getPreferences(getSessionId())
+        if (cancelled) return
+        setNeedsOnboarding(response.preferences.length === 0)
+        setStatus('ready')
+      } catch {
+        if (!cancelled) setStatus('error')
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [attempt])
 
   const retry = () => {
     setStatus('loading')
-    void loadSession()
+    setAttempt((n) => n + 1)
   }
 
   if (status === 'error') {
