@@ -17,6 +17,9 @@
 
 * {
   box-sizing: border-box;
+  /* iOS paints a gray overlay on the tapped element, then fades it before the
+     selected style appears. `transparent` is ignored on some WebKit versions. */
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 
 :root {
@@ -43,6 +46,26 @@ input,
 select,
 textarea {
   font-family: inherit;
+}
+
+/* Links and buttons otherwise wait out double-tap zoom, so the selected style
+   shows up late. Manipulation keeps the tap and still allows scrolling. */
+a,
+button,
+label,
+summary,
+[role='button'],
+[role='link'] {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Touch taps focus the control and flash the keyboard ring. Keep the ring for
+   real keyboard focus. */
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .brand,
@@ -266,7 +289,15 @@ a {
   font-size: 0.72rem;
   font-weight: 600;
   color: #5a6b85;
-  transition: color 0.15s ease, background 0.15s ease;
+  background-color: transparent;
+}
+
+/* A fade here reads as a flicker on touch: the pill eases in after the tap.
+   Pointer devices can keep the short transition. */
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav-link {
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
 }
 
 .bottom-nav-link svg {
@@ -675,7 +706,12 @@ a {
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vibe-chip {
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
 }
 
 .vibe-chip.active {
