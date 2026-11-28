@@ -22,7 +22,7 @@ const seriesDedupeKey = (event: EventItem) => {
   return `f:${event.title.trim().toLowerCase()}|${event.location.trim().toLowerCase()}`
 }
 
-export function HomePage() {
+export function HomePage({ active }: { active: boolean }) {
   const { notifyFirstLike, setSwipeTutorialActive } = useNavigationHints()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,9 +51,10 @@ export function HomePage() {
   const hiddenSeries = useRef(new Set<string>())
 
   useEffect(() => {
-    document.documentElement.classList.add('page-home')
-    return () => document.documentElement.classList.remove('page-home')
-  }, [])
+    if (active) return
+    setDetail(null)
+    setCardConcealed(false)
+  }, [active])
 
   const loadEvents = useCallback(async () => {
     const gen = ++rankGen.current
@@ -209,9 +210,9 @@ export function HomePage() {
   const lockNavForTutorial = !tutorialDismissed && !error && (loading || Boolean(current))
 
   useEffect(() => {
-    setSwipeTutorialActive(lockNavForTutorial)
+    setSwipeTutorialActive(active && lockNavForTutorial)
     return () => setSwipeTutorialActive(false)
-  }, [lockNavForTutorial, setSwipeTutorialActive])
+  }, [active, lockNavForTutorial, setSwipeTutorialActive])
 
   const completeTutorial = useCallback(() => {
     localStorage.setItem(TUTORIAL_SWIPE_KEY, '1')
@@ -295,7 +296,7 @@ export function HomePage() {
           </button>
         </section>
       ) : null}
-      {detail ? (
+      {active && detail ? (
         <EventExpandPage
           event={detail.event}
           origin={detail.origin}

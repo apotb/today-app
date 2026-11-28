@@ -333,9 +333,10 @@ export function EventExpandPage({
 
   useEffect(() => {
     const main = document.querySelector('.app-main')
-    const previous = main instanceof HTMLElement ? main.style.overflow : ''
+    const panel = document.querySelector('.tab-panel:not(.is-inactive)')
+    const previous = panel instanceof HTMLElement ? panel.style.overflow : ''
+    if (panel instanceof HTMLElement) panel.style.overflow = 'hidden'
     if (main instanceof HTMLElement) {
-      main.style.overflow = 'hidden'
       // The tab bar sits outside this region and stays clickable.
       main.inert = true
     }
@@ -369,10 +370,8 @@ export function EventExpandPage({
       stopSourceWatch()
       momentum.current = null
       window.removeEventListener('resize', onResize)
-      if (main instanceof HTMLElement) {
-        main.style.overflow = previous
-        main.inert = false
-      }
+      if (panel instanceof HTMLElement) panel.style.overflow = previous
+      if (main instanceof HTMLElement) main.inert = false
     }
     // Motion values and playFrame are stable for the lifetime of this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps

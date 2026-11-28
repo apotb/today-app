@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
 import { useLayoutEffect } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import logo from '../assets/logo.png'
+import { HomePage } from '../pages/HomePage'
+import { MyEventsPage } from '../pages/MyEventsPage'
+import { SettingsPage } from '../pages/SettingsPage'
 import { NavigationHintsProvider, useNavigationHints } from './NavigationHintsContext'
 
 function IconHome(props: { className?: string }) {
@@ -87,7 +90,11 @@ function NavDummy({ children }: { children: ReactNode }) {
 }
 
 function LayoutShell() {
+  const { pathname } = useLocation()
   const { blockUntilEventsTab, swipeTutorialActive } = useNavigationHints()
+  const home = pathname === '/'
+  const events = pathname === '/my-events'
+  const settings = pathname === '/settings'
 
   useLayoutEffect(() => {
     const top = document.querySelector('.app-top-brand')
@@ -119,7 +126,27 @@ function LayoutShell() {
       </header>
       <div className="app-main-wrap">
         <main className="app-main">
-          <Outlet />
+          <div
+            className={['tab-panel', 'tab-panel-home', home ? '' : 'is-inactive'].filter(Boolean).join(' ')}
+            inert={!home}
+            aria-hidden={home ? undefined : true}
+          >
+            <HomePage active={home} />
+          </div>
+          <div
+            className={['tab-panel', 'tab-panel-scroll', events ? '' : 'is-inactive'].filter(Boolean).join(' ')}
+            inert={!events}
+            aria-hidden={events ? undefined : true}
+          >
+            <MyEventsPage active={events} />
+          </div>
+          <div
+            className={['tab-panel', 'tab-panel-scroll', settings ? '' : 'is-inactive'].filter(Boolean).join(' ')}
+            inert={!settings}
+            aria-hidden={settings ? undefined : true}
+          >
+            <SettingsPage />
+          </div>
         </main>
         {blockUntilEventsTab ? (
           <div
