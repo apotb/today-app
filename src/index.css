@@ -1511,7 +1511,8 @@ button.tutorial-dismiss {
   line-height: 1.4;
 }
 
-.settings-reset-dialog #reset-account-desc {
+.settings-reset-dialog #reset-account-desc,
+.settings-reset-dialog #reset-everything-desc {
   color: #506080;
 }
 

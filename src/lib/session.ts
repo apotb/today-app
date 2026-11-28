@@ -52,3 +52,20 @@ export const resetLocalAccount = () => {
     /* storage unavailable */
   }
 }
+
+/** Drop every saved key for this browser, including location, radius, and tutorials. */
+export const resetEverythingLocal = () => {
+  memoryFallback = null
+  try {
+    const keys: string[] = []
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('today.')) keys.push(key)
+    }
+    for (const key of keys) {
+      localStorage.removeItem(key)
+    }
+  } catch {
+    /* storage unavailable */
+  }
+}
