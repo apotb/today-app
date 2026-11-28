@@ -18,10 +18,24 @@ function apiErrorHint(status: number, body: string) {
 /** Free-tier hosts (e.g. Render) can take 30–90s to answer the first request after sleep. */
 const REQUEST_TIMEOUT_MS = 120_000
 
+/**
+ * Release builds call an absolute API URL, so Capacitor's HTTP patch sends them
+ * through URLSession. That cache was replaying a discover response full of the
+ * built-in sample events. Debug and the website use a relative `/api` URL, which
+ * skips the patch. Prefer the original fetch, and never store GET responses.
+ */
+const apiFetch: typeof fetch = (input, init) => {
+  const capFetch = (globalThis as { CapacitorWebFetch?: typeof fetch }).CapacitorWebFetch
+  return (capFetch ?? fetch)(input, init)
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const method = (options?.method ?? 'GET').toUpperCase()
+  const bust = method === 'GET' ? `${path.includes('?') ? '&' : '?'}_=${Date.now()}` : ''
+  const response = await apiFetch(`${API_BASE}${path}${bust}`, {
     headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
     ...options,
+    cache: 'no-store',
     signal: options?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
   const text = await response.text()
