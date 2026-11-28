@@ -298,6 +298,7 @@ export function HomePage() {
           origin={detail.origin}
           measureOrigin={measureCard}
           onOpened={() => setCardConcealed(false)}
+          onCardShown={() => setCardConcealed(false)}
           onFlyStart={() => setCardConcealed(true)}
           onFlyCancel={() => setCardConcealed(false)}
           onExited={() => {

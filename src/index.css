@@ -1763,8 +1763,17 @@ a.modal-cal-btn {
   border-radius: 10px;
 }
 
-.swipe-card.is-concealed {
-  visibility: hidden;
+/* The photo sets visibility itself, so hiding only the card leaves that image on screen. */
+.swipe-card.is-concealed,
+.swipe-card.is-concealed * {
+  visibility: hidden !important;
+}
+
+/* The deck card sits under the details page so the close can land on it.
+   A downward drag otherwise shows that card's photo above the sheet. */
+body:has(.event-expand:not(.is-card-shown):not(.is-flying)) .home-deck .swipe-card,
+body:has(.event-expand:not(.is-card-shown):not(.is-flying)) .home-deck .swipe-card * {
+  visibility: hidden !important;
 }
 
 .card-details-btn {
