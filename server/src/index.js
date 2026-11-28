@@ -131,7 +131,10 @@ const getWindow = () => {
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
-/** Liked events on calendar: load a bit past 3 local calendar days */
+/**
+ * Saved events for the Events tab: anything that hasn't ended yet (so events already
+ * in progress stay visible) and starts within the next 4 days.
+ */
 const getMyEventsFetchWindow = () => {
   const from = new Date()
   const to = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000)
@@ -599,7 +602,8 @@ app.get('/api/my-events', async (req, res, next) => {
            WHERE session_id = ? AND action IN ('like', 'attended')
          )
          AND (e.id LIKE 'evt_%' OR e.id LIKE 'seed-%')
-         AND e.starts_at BETWEEN ? AND ?
+         AND e.ends_at > ?
+         AND e.starts_at <= ?
        ORDER BY e.starts_at ASC`,
       [sessionId, sessionId, from, to],
     )

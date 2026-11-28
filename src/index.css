@@ -1980,6 +1980,14 @@ button.card-details-btn:hover {
   color: #506080;
 }
 
+/* Shown when the server can't be reached on startup */
+.startup-error {
+  max-width: 32rem;
+  margin: 15vh auto 0;
+  padding: 0 20px;
+  text-align: center;
+}
+
 .loading-hint {
   display: block;
   margin-top: 12px;

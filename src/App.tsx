@@ -9,27 +9,51 @@ import { api } from './api/client'
 import { useEffect, useState } from 'react'
 
 function App() {
-  const [ready, setReady] = useState(false)
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
 
+  // Bumped by Retry to run the startup check again.
+  const [attempt, setAttempt] = useState(0)
+
+  // Decide between onboarding and the app from the saved preferences. A new session
+  // gets an empty list back; a failed request means the server couldn't be reached,
+  // which must not be mistaken for a new user (that would send a returning user back
+  // through onboarding).
   useEffect(() => {
+    let cancelled = false
     const run = async () => {
       try {
-        const sessionId = getSessionId()
-        try {
-          const response = await api.getPreferences(sessionId)
-          setNeedsOnboarding(response.preferences.length === 0)
-        } catch {
-          setNeedsOnboarding(true)
-        }
-      } finally {
-        setReady(true)
+        const response = await api.getPreferences(getSessionId())
+        if (cancelled) return
+        setNeedsOnboarding(response.preferences.length === 0)
+        setStatus('ready')
+      } catch {
+        if (!cancelled) setStatus('error')
       }
     }
     void run()
-  }, [])
+    return () => {
+      cancelled = true
+    }
+  }, [attempt])
 
-  if (!ready) {
+  const retry = () => {
+    setStatus('loading')
+    setAttempt((n) => n + 1)
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="status startup-error" role="alert">
+        <p>Couldn&apos;t reach Today right now. Check your connection and try again.</p>
+        <button type="button" className="btn btn-primary" onClick={retry}>
+          Retry
+        </button>
+      </div>
+    )
+  }
+
+  if (status === 'loading') {
     return (
       <p className="status">
         Loading Today...
