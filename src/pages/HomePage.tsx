@@ -174,9 +174,13 @@ export function HomePage() {
       ...events.filter((e) => e.id !== target.id && likedKey && seriesDedupeKey(e) === likedKey),
     ]
     const removedIds = new Set(removed.map((e) => e.id))
-    setEvents((prev) => prev.filter((e) => !removedIds.has(e.id)))
+    const nextEvents = events.filter((e) => !removedIds.has(e.id))
+    setEvents(nextEvents)
     setLastSwipe({ action, removed })
-    void rerankRemaining(null)
+    // The card now on screen stays there. The refreshed ranking only reorders the
+    // cards behind it, so the one that just appeared doesn't get swapped out.
+    const nextVisible = filterByVibes(nextEvents, vibes, loadedAtMs)[0]
+    void rerankRemaining(nextVisible ? [nextVisible] : null)
   }
 
   const undoLastSwipe = async () => {
