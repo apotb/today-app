@@ -6,6 +6,8 @@ import { formatDateTime12h, formatPrice } from '../lib/format'
 import type { ExpandOrigin } from './EventExpandPage'
 import { EventBadges } from './EventBadges'
 
+type IntroHint = 'right' | 'left' | 'up' | null
+
 type Props = {
   event: EventItem
   onSwipe: (direction: 'left' | 'right') => Promise<void> | void
@@ -17,6 +19,10 @@ type Props = {
   concealed?: boolean
   /** Expanded details are open, so this card should ignore swipes and arrow keys. */
   detailsOpen?: boolean
+  /** Play the one-shot swipe demo on this card. Input stays off until it finishes. */
+  playIntro?: boolean
+  /** Called only when the intro sequence finishes. Unmounting mid-sequence does not call this. */
+  onIntroComplete?: () => void
 }
 
 const SWIPE_THRESHOLD = 120
@@ -36,6 +42,11 @@ function ChevronUp() {
   )
 }
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const nudgeSpring = { type: 'spring' as const, stiffness: 320, damping: 22 }
+const nudgeReturn = { duration: 0.28, ease: 'easeOut' as const }
+
 export function SwipeCard({
   event,
   onSwipe,
@@ -44,8 +55,11 @@ export function SwipeCard({
   deckLayout,
   concealed,
   detailsOpen,
+  playIntro = false,
+  onIntroComplete,
 }: Props) {
   const articleRef = useRef<HTMLElement>(null)
+  const onIntroCompleteRef = useRef(onIntroComplete)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   const controls = useAnimation()
@@ -54,10 +68,71 @@ export function SwipeCard({
   const nopeOpacity = useTransform(x, [-20, -SWIPE_THRESHOLD], [0, 1])
   const [animating, setAnimating] = useState(false)
   const [imageReady, setImageReady] = useState(false)
+  const [introActive, setIntroActive] = useState(playIntro)
+  const [introHint, setIntroHint] = useState<IntroHint>(null)
+
+  useEffect(() => {
+    onIntroCompleteRef.current = onIntroComplete
+  }, [onIntroComplete])
+
+  useEffect(() => {
+    if (!playIntro || !imageReady) return
+    let cancelled = false
+    const run = async () => {
+      await wait(450)
+      if (cancelled) return
+      setIntroHint('right')
+      await controls.start({
+        x: 78,
+        rotate: 5,
+        transition: nudgeSpring,
+      })
+      await wait(1400)
+      if (cancelled) return
+      setIntroHint(null)
+      await controls.start({ x: 0, rotate: 0, transition: nudgeReturn })
+      await wait(400)
+      if (cancelled) return
+      setIntroHint('left')
+      await controls.start({
+        x: -78,
+        rotate: -5,
+        transition: nudgeSpring,
+      })
+      await wait(1400)
+      if (cancelled) return
+      setIntroHint(null)
+      await controls.start({ x: 0, y: 0, rotate: 0, transition: nudgeReturn })
+      await wait(400)
+      if (cancelled) return
+      setIntroHint('up')
+      await controls.start({
+        y: -52,
+        x: 0,
+        rotate: 0,
+        transition: nudgeSpring,
+      })
+      await wait(1400)
+      if (cancelled) return
+      setIntroHint(null)
+      await controls.start({ x: 0, y: 0, rotate: 0, transition: nudgeReturn })
+      if (cancelled) return
+      x.set(0)
+      y.set(0)
+      controls.set({ x: 0, y: 0, rotate: 0, opacity: 1 })
+      setIntroActive(false)
+      onIntroCompleteRef.current?.()
+    }
+    void run()
+    return () => {
+      cancelled = true
+      setIntroHint(null)
+    }
+  }, [playIntro, imageReady, controls, x, y])
 
   const triggerSwipe = useCallback(
     async (direction: 'left' | 'right') => {
-      if (animating || !imageReady) return
+      if (animating || !imageReady || introActive) return
       setAnimating(true)
       const targetX = direction === 'right' ? 420 : -420
       const targetRotate = direction === 'right' ? 14 : -14
@@ -86,12 +161,12 @@ export function SwipeCard({
         setAnimating(false)
       }
     },
-    [animating, imageReady, onSwipe, controls, x, y],
+    [animating, imageReady, introActive, onSwipe, controls, x, y],
   )
 
   const openDetails = useCallback(() => {
     const el = articleRef.current
-    if (!el || !imageReady || animating || !onOpenDetails) return
+    if (!el || !imageReady || animating || introActive || !onOpenDetails) return
     const rect = el.getBoundingClientRect()
     const image = el.querySelector('.card-image-wrap')?.getBoundingClientRect()
     const origin: ExpandOrigin = {
@@ -105,7 +180,7 @@ export function SwipeCard({
     }
     // Paint the expanding page on top of this card before the drag snaps back.
     flushSync(() => onOpenDetails(origin))
-  }, [animating, imageReady, onOpenDetails])
+  }, [animating, imageReady, introActive, onOpenDetails])
 
   // The card stays put under the page. Reset any leftover drag while it's hidden.
   useLayoutEffect(() => {
@@ -116,7 +191,7 @@ export function SwipeCard({
   }, [concealed, controls, x, y])
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (!imageReady || detailsOpen) return
+    if (!imageReady || detailsOpen || introActive) return
     const ox = info.offset.x
     const oy = info.offset.y
     if (oy < -SWIPE_UP_THRESHOLD && Math.abs(oy) >= Math.abs(ox)) {
@@ -133,7 +208,7 @@ export function SwipeCard({
   }
 
   useEffect(() => {
-    if (!showDesktopNav || detailsOpen) return
+    if (!showDesktopNav || detailsOpen || introActive) return
 
     const isTypingTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false
@@ -159,11 +234,14 @@ export function SwipeCard({
 
     window.addEventListener('keydown', onKeyDown, { passive: false })
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [showDesktopNav, detailsOpen, openDetails, triggerSwipe])
+  }, [showDesktopNav, detailsOpen, introActive, openDetails, triggerSwipe])
+
+  const inputLocked = animating || !imageReady || detailsOpen || introActive
 
   const cardClass = [
     deckLayout ? 'swipe-card home-deck-card' : 'swipe-card',
     concealed ? 'is-concealed' : '',
+    introActive ? 'is-intro' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -173,11 +251,11 @@ export function SwipeCard({
       ref={articleRef}
       className={cardClass}
       style={{ x, y, rotate }}
-      drag={animating || !imageReady || detailsOpen ? false : true}
+      drag={inputLocked ? false : true}
       dragElastic={0.88}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       onDragEnd={handleDragEnd}
-      whileTap={{ cursor: 'grabbing' }}
+      whileTap={introActive ? undefined : { cursor: 'grabbing' }}
       initial={{ opacity: 1, scale: 1 }}
       animate={controls}
       exit={{ opacity: 0, x: 200 }}
@@ -217,6 +295,7 @@ export function SwipeCard({
             aria-label="Show details"
             onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
             onClick={openDetails}
+            disabled={introActive}
           >
             <ChevronUp />
           </button>
@@ -229,7 +308,7 @@ export function SwipeCard({
               onClick={() => void triggerSwipe('left')}
               aria-label="Dislike (left arrow)"
               title="Dislike (←)"
-              disabled={animating || !imageReady}
+              disabled={inputLocked}
             >
               <span className="image-nav-glyph" aria-hidden="true">
                 ‹
@@ -241,7 +320,7 @@ export function SwipeCard({
               onClick={() => void triggerSwipe('right')}
               aria-label="Like (right arrow)"
               title="Like (→)"
-              disabled={animating || !imageReady}
+              disabled={inputLocked}
             >
               <span className="image-nav-glyph" aria-hidden="true">
                 ›
@@ -265,6 +344,21 @@ export function SwipeCard({
         <p>{formatPrice(event.cost)}</p>
         <p className="description description-preview">{event.description}</p>
       </div>
+      {introHint === 'right' ? (
+        <div className="tutorial-bubble tutorial-bubble-like" role="status">
+          Swipe right if you&apos;re interested
+        </div>
+      ) : null}
+      {introHint === 'left' ? (
+        <div className="tutorial-bubble tutorial-bubble-nope" role="status">
+          Swipe left if you&apos;re not
+        </div>
+      ) : null}
+      {introHint === 'up' ? (
+        <div className="tutorial-bubble tutorial-bubble-details" role="status">
+          Swipe up for details
+        </div>
+      ) : null}
     </motion.article>
   )
 }
