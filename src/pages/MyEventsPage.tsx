@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { EventCalendar } from '../components/EventCalendar'
 import { EventExpandPage, type ExpandOrigin } from '../components/EventExpandPage'
-import { CALENDAR_WINDOW_MS } from '../lib/calendarLayout'
+import { CALENDAR_WINDOW_MS, eventEndMs } from '../lib/calendarLayout'
 import { getSessionId } from '../lib/session'
 import type { EventItem } from '../types/models'
 import { maybeNotifyUpcoming } from '../lib/notifications'
@@ -49,9 +49,11 @@ export function MyEventsPage() {
 
   const upcoming = useMemo(
     () =>
+      // Keep events that are happening right now (started but not ended), not just
+      // ones that haven't started, so their details and directions stay one tap away.
       events.filter((event) => {
-        const t = new Date(event.starts_at).getTime()
-        return t >= nowMs && t <= nowMs + CALENDAR_WINDOW_MS
+        const start = new Date(event.starts_at).getTime()
+        return eventEndMs(event) > nowMs && start <= nowMs + CALENDAR_WINDOW_MS
       }),
     [events, nowMs],
   )

@@ -25,7 +25,8 @@ export type CalendarDay = {
   blocks: CalendarBlock[]
 }
 
-function eventEndMs(event: EventItem): number {
+/** When an event ends; events without a usable end time count as one hour long. */
+export function eventEndMs(event: EventItem): number {
   const start = new Date(event.starts_at).getTime()
   const end = new Date(event.ends_at).getTime()
   return end > start ? end : start + HOUR_MS
