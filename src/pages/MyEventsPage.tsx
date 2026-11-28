@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { EventCalendar } from '../components/EventCalendar'
 import { EventExpandPage, type ExpandOrigin } from '../components/EventExpandPage'
@@ -7,7 +7,7 @@ import { getSessionId } from '../lib/session'
 import type { EventItem } from '../types/models'
 import { maybeNotifyUpcoming } from '../lib/notifications'
 
-export function MyEventsPage() {
+export function MyEventsPage({ active }: { active: boolean }) {
   const [events, setEvents] = useState<EventItem[]>([])
   const [selected, setSelected] = useState<{ event: EventItem; origin: ExpandOrigin } | null>(null)
   const [error, setError] = useState('')
@@ -16,30 +16,53 @@ export function MyEventsPage() {
   const [lastRemoved, setLastRemoved] = useState<EventItem | null>(null)
   const [undoing, setUndoing] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [ready, setReady] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const readyRef = useRef(false)
 
-  const refreshEvents = useCallback(async () => {
-    setLoading(true)
-    setError('')
+  const refreshEvents = useCallback(async (silent = false) => {
+    const quiet = silent && readyRef.current
+    if (!quiet) {
+      setLoading(true)
+      setError('')
+    }
     try {
       // Saved events are kept on the server, so no provider sync (or location) is needed here.
       const response = await api.getMyEvents(getSessionId())
       setEvents(response.events)
       setNowMs(Date.now())
+      readyRef.current = true
+      setReady(true)
+      setError('')
       await maybeNotifyUpcoming(response.events)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load your events.')
+      if (!readyRef.current) {
+        setError(e instanceof Error ? e.message : 'Failed to load your events.')
+      }
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      void refreshEvents()
+      void refreshEvents(false)
     }, 0)
     return () => window.clearTimeout(id)
   }, [refreshEvents])
+
+  const wasActive = useRef(false)
+  useEffect(() => {
+    const becameActive = active && !wasActive.current
+    wasActive.current = active
+    if (!becameActive || !readyRef.current) return
+    void refreshEvents(true)
+  }, [active, refreshEvents])
+
+  useEffect(() => {
+    if (active) return
+    setSelected(null)
+  }, [active])
 
   // Keep the current-time line and the 48-hour window moving.
   useEffect(() => {
@@ -90,7 +113,7 @@ export function MyEventsPage() {
     }
   }
 
-  if (loading) {
+  if (loading && !ready) {
     return (
       <div className="page page-events-loading">
         <h1>Events</h1>
@@ -146,7 +169,7 @@ export function MyEventsPage() {
           </button>
         </div>
       ) : null}
-      {selected ? (
+      {active && selected ? (
         <EventExpandPage
           event={selected.event}
           origin={selected.origin}

@@ -17,6 +17,9 @@
 
 * {
   box-sizing: border-box;
+  /* iOS paints a gray overlay on the tapped element, then fades it before the
+     selected style appears. `transparent` is ignored on some WebKit versions. */
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 
 :root {
@@ -43,6 +46,26 @@ input,
 select,
 textarea {
   font-family: inherit;
+}
+
+/* Links and buttons otherwise wait out double-tap zoom, so the selected style
+   shows up late. Manipulation keeps the tap and still allows scrolling. */
+a,
+button,
+label,
+summary,
+[role='button'],
+[role='link'] {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Touch taps focus the control and flash the keyboard ring. Keep the ring for
+   real keyboard focus. */
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .brand,
@@ -119,28 +142,59 @@ a {
 }
 
 .app-main {
+  position: relative;
   flex: 1;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   max-width: 980px;
   width: 100%;
   margin: 0 auto;
+  padding: 0;
+}
+
+/* Each tab stays mounted. Inactive panels stay laid out (not display:none)
+   so their scroll position survives a tab switch. */
+.tab-panel {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.tab-panel:not(.is-inactive) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Keep inactive tabs laid out so scroll position survives. Opacity, not
+   visibility alone: card photos set visibility:visible and would show through. */
+.tab-panel.is-inactive {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tab-panel-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 24px 16px 20px;
 }
 
-/* Home: fill space between sticky header and nav; deck sizes to remaining height (mobile + desktop). */
-html.page-home .app-main {
-  overflow-y: hidden;
+/* Home: fill space between sticky header and nav; deck sizes to remaining height. */
+.tab-panel-home {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  overflow: hidden;
   padding: 12px 16px 10px;
 }
 
 @media (min-width: 720px) {
-  html.page-home .app-main {
+  .tab-panel-home {
     padding: 20px 16px 16px;
   }
 }
@@ -235,7 +289,15 @@ html.page-home .app-main {
   font-size: 0.72rem;
   font-weight: 600;
   color: #5a6b85;
-  transition: color 0.15s ease, background 0.15s ease;
+  background-color: transparent;
+}
+
+/* A fade here reads as a flicker on touch: the pill eases in after the tap.
+   Pointer devices can keep the short transition. */
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav-link {
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
 }
 
 .bottom-nav-link svg {
@@ -252,66 +314,12 @@ html.page-home .app-main {
 }
 
 
-.tutorial-overlay {
-  position: fixed;
-  top: var(--app-chrome-top);
-  left: 0;
-  right: 0;
-  bottom: var(--app-chrome-bottom);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 16px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.tutorial-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(16, 33, 63, 0.45);
-}
-
-.tutorial-content {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  width: 100%;
-  max-width: 560px;
-  margin: auto 0;
-  flex-shrink: 0;
-}
-
-.tutorial-footer {
-  min-height: 52px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 100%;
-}
-
-.tutorial-footer-spacer {
-  width: 100%;
-  height: 48px;
-}
-
-.tutorial-demo-card {
-  position: relative;
-  pointer-events: none;
-  box-shadow: 0 22px 50px rgba(15, 32, 70, 0.28);
-}
-
 .tutorial-bubble {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 5;
+  z-index: 7;
   padding: 10px 14px;
   border-radius: 12px;
   font-size: 0.88rem;
@@ -340,8 +348,8 @@ html.page-home .app-main {
   border: 1px solid #7db0f0;
 }
 
-button.tutorial-dismiss {
-  min-width: 200px;
+.swipe-card.is-intro {
+  cursor: default;
 }
 
 .page h1 {
@@ -698,7 +706,12 @@ button.tutorial-dismiss {
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vibe-chip {
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
 }
 
 .vibe-chip.active {
@@ -937,22 +950,36 @@ button.tutorial-dismiss {
 
 .center-page:has(.categories-step) {
   overflow: hidden;
+  place-items: stretch center;
 }
 
 .categories-step {
   width: min(920px, 100%);
+  height: 100%;
+  min-height: 0;
   max-height: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: 14px 14px 12px;
+  padding: 16px 16px 12px;
   overflow: hidden;
+  text-align: left;
+}
+
+.categories-header {
+  flex: none;
+  text-align: center;
 }
 
 .categories-step h1 {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: clamp(1.35rem, 4.2vw, 1.85rem);
   line-height: 1.1;
+}
+
+.categories-help {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
 }
 
 .location-step .location-subtitle {
@@ -994,37 +1021,66 @@ button.tutorial-dismiss {
   font-size: 1rem;
 }
 
-.category-grid {
+.category-scroll {
+  flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-group + .category-group {
+  margin-top: 14px;
+}
+
+.category-group-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 8px;
+  padding: 8px 2px 6px;
+  background: #fff;
+  color: #506080;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.category-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin: 0 0 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
 }
 
 .category-card {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
-  min-height: 0;
-  height: calc(2.45em + 2px);
-  overflow: hidden;
-  padding: 0 8px;
+  min-height: 48px;
+  padding: 8px 12px;
   border: 1px solid #d7e6d8;
-  border-radius: 10px;
-  background: #f7fbf7;
+  border-radius: 12px;
+  background-color: #f7fbf7;
   color: #163024;
   text-align: left;
-  font-size: clamp(0.68rem, 2.7vw, 0.84rem);
+  font-size: 0.9375rem;
   font-weight: 650;
-  line-height: 1.15;
+  line-height: 1.2;
   cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.category-card:hover:not(:disabled) {
-  border-color: #8dcea0;
-  background: #fff;
+@media (hover: hover) and (pointer: fine) {
+  .category-card:hover:not(:disabled):not(.active) {
+    border-color: #8dcea0;
+    background-color: #f7fbf7;
+  }
 }
 
 .category-card:focus-visible {
@@ -1032,87 +1088,81 @@ button.tutorial-dismiss {
   outline-offset: 1px;
 }
 
-.category-card.active {
+.category-card:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.category-card:active:not(:disabled) {
+  background-color: #e7f6e8;
+}
+
+.category-card.active,
+.category-card.active:hover:not(:disabled),
+.category-card.active:active:not(:disabled) {
   border-color: #00b100;
-  background: #e8f9e8;
+  background-color: #dff6e0;
   color: #087008;
   box-shadow: inset 0 0 0 1px #00b100;
 }
 
 .category-card .emoji {
   flex: none;
-  font-size: 1rem;
+  font-size: 1.25rem;
   line-height: 1;
 }
 
 .category-name {
   min-width: 0;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.category-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  border: 2px solid #c5ddc6;
+  border-radius: 50%;
+  color: transparent;
+}
+
+.category-check.on {
+  border-color: #00b100;
+  background: #00b100;
+  color: #fff;
+}
+
+.categories-footer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e4e8f1;
+  background: #fff;
+}
+
+.categories-footer .error,
+.categories-count {
+  margin: 0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.categories-count {
+  color: #506080;
 }
 
 .categories-continue {
-  flex: none;
-  width: min(100%, 280px);
-  align-self: center;
-  padding: 11px 16px;
-}
-
-@media (max-width: 719px) {
-  .categories-step {
-    padding: 10px 10px 8px;
-  }
-
-  .categories-step h1 {
-    margin-bottom: 8px;
-    font-size: 1.35rem;
-  }
-
-  .category-grid {
-    gap: 5px;
-    margin-bottom: 8px;
-  }
-
-  .category-card {
-    padding: 0 7px;
-    gap: 5px;
-    font-size: 0.72rem;
-    border-radius: 9px;
-  }
-
-  .category-card .emoji {
-    font-size: 0.95rem;
-  }
-}
-
-@media (max-width: 719px) and (max-height: 620px) {
-  .center-page:has(.categories-step) {
-    padding: 6px;
-  }
-
-  .categories-step {
-    padding: 8px 8px 6px;
-  }
-
-  .categories-step h1 {
-    margin-bottom: 6px;
-  }
-
-  .category-grid {
-    gap: 4px;
-    margin-bottom: 6px;
-  }
-
-  .category-card {
-    font-size: 0.68rem;
-    padding: 0 6px;
-  }
-
-  .categories-continue {
-    padding: 8px 12px;
-  }
+  width: 100%;
+  padding: 12px 16px;
 }
 
 @media (min-width: 720px) {
@@ -1120,15 +1170,12 @@ button.tutorial-dismiss {
     padding: 18px 20px 16px;
   }
 
-  .category-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
+  .category-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .category-card {
-    font-size: 0.86rem;
-    padding: 0 12px;
-    gap: 8px;
+  .categories-continue {
+    width: min(100%, 280px);
   }
 }
 
@@ -1511,7 +1558,8 @@ button.tutorial-dismiss {
   line-height: 1.4;
 }
 
-.settings-reset-dialog #reset-account-desc {
+.settings-reset-dialog #reset-account-desc,
+.settings-reset-dialog #reset-everything-desc {
   color: #506080;
 }
 
@@ -1763,8 +1811,17 @@ a.modal-cal-btn {
   border-radius: 10px;
 }
 
-.swipe-card.is-concealed {
-  visibility: hidden;
+/* The photo sets visibility itself, so hiding only the card leaves that image on screen. */
+.swipe-card.is-concealed,
+.swipe-card.is-concealed * {
+  visibility: hidden !important;
+}
+
+/* The deck card sits under the details page so the close can land on it.
+   A downward drag otherwise shows that card's photo above the sheet. */
+body:has(.event-expand:not(.is-card-shown):not(.is-flying)) .home-deck .swipe-card,
+body:has(.event-expand:not(.is-card-shown):not(.is-flying)) .home-deck .swipe-card * {
+  visibility: hidden !important;
 }
 
 .card-details-btn {

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { EventExpandPage, type ExpandOrigin } from '../components/EventExpandPage'
 import { SwipeCard } from '../components/SwipeCard'
-import { SwipeTutorialOverlay } from '../components/SwipeTutorialOverlay'
 import { useNavigationHints } from '../components/NavigationHintsContext'
 import { FEED_REFRESH_EVENT } from '../lib/feedEvents'
 import { getSessionId } from '../lib/session'
@@ -23,7 +22,7 @@ const seriesDedupeKey = (event: EventItem) => {
   return `f:${event.title.trim().toLowerCase()}|${event.location.trim().toLowerCase()}`
 }
 
-export function HomePage() {
+export function HomePage({ active }: { active: boolean }) {
   const { notifyFirstLike, setSwipeTutorialActive } = useNavigationHints()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,9 +51,10 @@ export function HomePage() {
   const hiddenSeries = useRef(new Set<string>())
 
   useEffect(() => {
-    document.documentElement.classList.add('page-home')
-    return () => document.documentElement.classList.remove('page-home')
-  }, [])
+    if (active) return
+    setDetail(null)
+    setCardConcealed(false)
+  }, [active])
 
   const loadEvents = useCallback(async () => {
     const gen = ++rankGen.current
@@ -174,9 +174,13 @@ export function HomePage() {
       ...events.filter((e) => e.id !== target.id && likedKey && seriesDedupeKey(e) === likedKey),
     ]
     const removedIds = new Set(removed.map((e) => e.id))
-    setEvents((prev) => prev.filter((e) => !removedIds.has(e.id)))
+    const nextEvents = events.filter((e) => !removedIds.has(e.id))
+    setEvents(nextEvents)
     setLastSwipe({ action, removed })
-    void rerankRemaining(null)
+    // The card now on screen stays there. The refreshed ranking only reorders the
+    // cards behind it, so the one that just appeared doesn't get swapped out.
+    const nextVisible = filterByVibes(nextEvents, vibes, loadedAtMs)[0]
+    void rerankRemaining(nextVisible ? [nextVisible] : null)
   }
 
   const undoLastSwipe = async () => {
@@ -201,20 +205,19 @@ export function HomePage() {
     }
   }
 
-  const showTutorial = !loading && !error && !tutorialDismissed
-  // Lock the other tabs as soon as Home is going to show the tutorial, including
-  // while the deck is still loading. A load error unlocks them so Settings stays reachable.
-  const lockNavForTutorial = !error && !tutorialDismissed
+  // Lock the other tabs only while a card is about to demonstrate, or is demonstrating.
+  // An empty feed or a load error leaves the tabs usable — there is nothing to watch.
+  const lockNavForTutorial = !tutorialDismissed && !error && (loading || Boolean(current))
 
   useEffect(() => {
-    setSwipeTutorialActive(lockNavForTutorial)
+    setSwipeTutorialActive(active && lockNavForTutorial)
     return () => setSwipeTutorialActive(false)
-  }, [lockNavForTutorial, setSwipeTutorialActive])
+  }, [active, lockNavForTutorial, setSwipeTutorialActive])
 
-  const completeTutorial = () => {
+  const completeTutorial = useCallback(() => {
     localStorage.setItem(TUTORIAL_SWIPE_KEY, '1')
     setTutorialDismissed(true)
-  }
+  }, [])
 
   if (loading) {
     return (
@@ -237,11 +240,10 @@ export function HomePage() {
   return (
     <div className="page home-swipe-page">
       <h1>What&apos;s happening today?</h1>
-      {showTutorial ? <SwipeTutorialOverlay onComplete={completeTutorial} /> : null}
-      {!showTutorial && events.length > 0 ? (
+      {events.length > 0 ? (
         <VibeChips selected={vibes} onChange={changeVibes} />
       ) : null}
-      {!showTutorial && (current || lastSwipe) ? (
+      {current || lastSwipe ? (
         <p className="home-swipe-hint">
           <button
             type="button"
@@ -259,7 +261,7 @@ export function HomePage() {
           {swipeError}
         </p>
       ) : null}
-      {!showTutorial && current ? (
+      {current ? (
         <div className="home-deck" ref={deckRef}>
           <SwipeCard
             key={current.id}
@@ -273,10 +275,12 @@ export function HomePage() {
             deckLayout
             concealed={cardConcealed}
             detailsOpen={detail !== null}
+            playIntro={!tutorialDismissed}
+            onIntroComplete={completeTutorial}
           />
         </div>
       ) : null}
-      {!showTutorial && !current && events.length > 0 ? (
+      {!current && events.length > 0 ? (
         <section className="panel home-empty-panel">
           <p>Nothing left that matches these vibes. Try a different mix.</p>
           <button type="button" className="btn btn-primary" onClick={() => changeVibes([])}>
@@ -284,7 +288,7 @@ export function HomePage() {
           </button>
         </section>
       ) : null}
-      {!showTutorial && events.length === 0 ? (
+      {events.length === 0 ? (
         <section className="panel home-empty-panel">
           <p>No events in your feed window. Try widening radius in Settings or refreshing.</p>
           <button type="button" className="btn btn-primary" onClick={() => void loadEvents()}>
@@ -292,12 +296,13 @@ export function HomePage() {
           </button>
         </section>
       ) : null}
-      {detail ? (
+      {active && detail ? (
         <EventExpandPage
           event={detail.event}
           origin={detail.origin}
           measureOrigin={measureCard}
           onOpened={() => setCardConcealed(false)}
+          onCardShown={() => setCardConcealed(false)}
           onFlyStart={() => setCardConcealed(true)}
           onFlyCancel={() => setCardConcealed(false)}
           onExited={() => {

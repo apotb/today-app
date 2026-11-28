@@ -21,6 +21,14 @@ const port = Number(process.env.PORT) || 4000
 app.use(cors())
 app.use(express.json())
 
+// The iOS release app fetches the API through URLSession. Without this, a GET
+// discover response can be stored and replayed, which keeps showing the sample
+// events after a real sync. The website and the debug app do not use that cache.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) res.set('Cache-Control', 'no-store')
+  next()
+})
+
 // Single source of truth for category ids on the server (must match CATEGORY_OPTIONS in
 // src/types/models.ts on the frontend).
 const categories = Object.keys(CATEGORY_TAGS)
@@ -95,6 +103,12 @@ const HOUR_MS = 60 * 60 * 1000
 const lastAreaFetchAt = new Map()
 /** times of provider fetches in the last hour */
 let recentProviderFetches = []
+/**
+ * area key -> provider sync already running. A second caller for the same area
+ * waits for this instead of discovering before the import finishes (that race
+ * returns the built-in sample events).
+ */
+const inFlightSyncs = new Map()
 
 /**
  * Returns true and records the fetch if the providers may be called for this area
@@ -318,74 +332,87 @@ app.post('/api/events/sync', async (req, res, next) => {
       }
     }
 
-    // Rate limit (applies to forced syncs too). The feed still loads from the events
-    // already stored, so callers just get a cached response.
-    if (!takeProviderFetch(areaKey)) {
-      res.json({ success: true, imported: 0, cached: true, limited: true })
-      return
+    // A sync for this area may already be calling Ticketmaster. Wait for it so this
+    // request does not discover the feed before those events are stored.
+    let pending = inFlightSyncs.get(areaKey)
+    if (!pending) {
+      // Rate limit (applies to forced syncs too). The feed still loads from the events
+      // already stored, so callers just get a cached response.
+      if (!takeProviderFetch(areaKey)) {
+        res.json({ success: true, imported: 0, cached: true, limited: true })
+        return
+      }
+      pending = (async () => {
+        const fetchedEvents = await fetchExternalEvents({
+          location,
+          radius,
+          unit,
+        })
+        // Shared events table: never wipe other users' events here. Upsert this area's
+        // events and only prune ones that have already ended and nobody saved.
+        await pruneEndedEvents()
+        for (const event of fetchedEvents) {
+          await run(
+            `INSERT INTO events (
+              id, title, description, starts_at, ends_at, cost, image_url, category, location, address,
+              latitude, longitude, tags, source_url, series_key
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              title = excluded.title,
+              description = excluded.description,
+              starts_at = excluded.starts_at,
+              ends_at = excluded.ends_at,
+              cost = excluded.cost,
+              image_url = excluded.image_url,
+              category = excluded.category,
+              location = excluded.location,
+              address = excluded.address,
+              latitude = excluded.latitude,
+              longitude = excluded.longitude,
+              tags = excluded.tags,
+              source_url = excluded.source_url,
+              series_key = excluded.series_key`,
+            [
+              event.id,
+              event.title,
+              event.description,
+              event.startsAt,
+              event.endsAt,
+              event.cost,
+              event.imageUrl,
+              event.category,
+              event.location,
+              event.address ?? event.location,
+              event.latitude ?? null,
+              event.longitude ?? null,
+              JSON.stringify(event.tags ?? []),
+              event.sourceUrl ?? null,
+              event.seriesKey ?? null,
+            ],
+          )
+        }
+        // Providers swallow their own errors and return [], so an empty result might be a
+        // failure. Only remember the sync when it actually returned events.
+        if (fetchedEvents.length > 0) {
+          await run(
+            `INSERT INTO sync_areas (area_key, synced_at) VALUES (?, ?)
+             ON CONFLICT(area_key) DO UPDATE SET synced_at = excluded.synced_at`,
+            [areaKey, new Date().toISOString()],
+          )
+        }
+        return fetchedEvents.length
+      })()
+      inFlightSyncs.set(areaKey, pending)
+      pending.finally(() => {
+        if (inFlightSyncs.get(areaKey) === pending) inFlightSyncs.delete(areaKey)
+      })
     }
 
-    const fetchedEvents = await fetchExternalEvents({
-      location,
-      radius,
-      unit,
-    })
-    // Shared events table: never wipe other users' events here. Upsert this area's
-    // events and only prune ones that have already ended and nobody saved.
-    await pruneEndedEvents()
-    for (const event of fetchedEvents) {
-      await run(
-        `INSERT INTO events (
-          id, title, description, starts_at, ends_at, cost, image_url, category, location, address,
-          latitude, longitude, tags, source_url, series_key
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          title = excluded.title,
-          description = excluded.description,
-          starts_at = excluded.starts_at,
-          ends_at = excluded.ends_at,
-          cost = excluded.cost,
-          image_url = excluded.image_url,
-          category = excluded.category,
-          location = excluded.location,
-          address = excluded.address,
-          latitude = excluded.latitude,
-          longitude = excluded.longitude,
-          tags = excluded.tags,
-          source_url = excluded.source_url,
-          series_key = excluded.series_key`,
-        [
-          event.id,
-          event.title,
-          event.description,
-          event.startsAt,
-          event.endsAt,
-          event.cost,
-          event.imageUrl,
-          event.category,
-          event.location,
-          event.address ?? event.location,
-          event.latitude ?? null,
-          event.longitude ?? null,
-          JSON.stringify(event.tags ?? []),
-          event.sourceUrl ?? null,
-          event.seriesKey ?? null,
-        ],
-      )
-    }
-    // Providers swallow their own errors and return [], so an empty result might be a
-    // failure. Only remember the sync when it actually returned events.
-    if (fetchedEvents.length > 0) {
-      await run(
-        `INSERT INTO sync_areas (area_key, synced_at) VALUES (?, ?)
-         ON CONFLICT(area_key) DO UPDATE SET synced_at = excluded.synced_at`,
-        [areaKey, new Date().toISOString()],
-      )
-    }
+    const imported = await pending
     res.json({
       success: true,
       cached: false,
-      imported: fetchedEvents.length,
+      imported,
       providers: {
         ticketmasterConfigured: Boolean(process.env.TICKETMASTER_API_KEY),
       },

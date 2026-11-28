@@ -34,6 +34,8 @@ type Props = {
   /** Conceal the source card while this page flies off, and bring it back if the swipe fails. */
   onFlyStart?: () => void
   onFlyCancel?: () => void
+  /** The shrinking page now covers the deck card, so that card can show through. */
+  onCardShown?: () => void
   onSwipe?: (direction: 'left' | 'right') => Promise<void> | void
 }
 
@@ -117,6 +119,7 @@ export function EventExpandPage({
   onExited,
   onFlyStart,
   onFlyCancel,
+  onCardShown,
   onSwipe,
 }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -128,12 +131,14 @@ export function EventExpandPage({
   const onExitedRef = useRef(onExited)
   const onFlyStartRef = useRef(onFlyStart)
   const onFlyCancelRef = useRef(onFlyCancel)
+  const onCardShownRef = useRef(onCardShown)
   const onSwipeRef = useRef(onSwipe)
   measureRef.current = measureOrigin
   onOpenedRef.current = onOpened
   onExitedRef.current = onExited
   onFlyStartRef.current = onFlyStart
   onFlyCancelRef.current = onFlyCancel
+  onCardShownRef.current = onCardShown
   onSwipeRef.current = onSwipe
 
   const phase = useRef<'opening' | 'open' | 'exit' | 'fly'>('opening')
@@ -165,11 +170,55 @@ export function EventExpandPage({
 
   const [interactive, setInteractive] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const [flying, setFlying] = useState(false)
+  const [cardShown, setCardShown] = useState(false)
   const [shareMessage, setShareMessage] = useState('')
+  const cardShownRef = useRef(false)
+  const sourceWatch = useRef<Array<() => void>>([])
 
   const stopPlayback = () => {
     playback.current.forEach((control) => control.stop())
     playback.current = []
+  }
+
+  const stopSourceWatch = () => {
+    sourceWatch.current.forEach((stop) => stop())
+    sourceWatch.current = []
+  }
+
+  // The deck card is hidden while this page is open. Show it once the page
+  // covers that card again, so the spring can settle on top of the real card
+  // without an earlier drag revealing a second copy.
+  const revealCardUnderSheet = () => {
+    if (cardShownRef.current || originRef.current.fadeContent) return
+    const card = measureRef.current()
+    if (!card) return
+    const sheetTop = top.get() + y.get()
+    const sheetLeft = left.get() + x.get()
+    const sheetRight = sheetLeft + width.get()
+    const sheetBottom = sheetTop + height.get()
+    const slack = 2
+    if (
+      sheetTop > card.top + 0.5 ||
+      sheetLeft > card.left + slack ||
+      sheetRight < card.left + card.width - slack ||
+      sheetBottom < card.top + card.height - slack
+    ) {
+      return
+    }
+    cardShownRef.current = true
+    stopSourceWatch()
+    setCardShown(true)
+    onCardShownRef.current?.()
+  }
+
+  const watchCardReveal = () => {
+    stopSourceWatch()
+    revealCardUnderSheet()
+    if (cardShownRef.current) return
+    sourceWatch.current = [top, left, width, height, x, y].map((value) =>
+      value.on('change', revealCardUnderSheet),
+    )
   }
 
   const playFrame = (target: ExpandOrigin, transition = frameTransition()) => {
@@ -230,7 +279,7 @@ export function EventExpandPage({
           })()
         : null
     const frame = playFrame(exit, motion)
-    // The deck card is already underneath and matches this frame, so unmount
+    // Once this page covers the deck card, that card shows through, so unmount
     // as soon as the spring looks done. Calendar blocks have no matching
     // preview, so those fade out across the shrink instead of popping.
     const reveal = originRef.current.fadeContent
@@ -241,6 +290,7 @@ export function EventExpandPage({
       : null
     if (scrollBack) playback.current.push(scrollBack)
     if (reveal) playback.current.push(reveal)
+    watchCardReveal()
     void Promise.all([frame, scrollBack ?? Promise.resolve(true), reveal ?? Promise.resolve(true)]).then(
       ([finished]) => {
         if (finished) onExitedRef.current()
@@ -254,6 +304,7 @@ export function EventExpandPage({
     if (!swipe) return
     phase.current = 'fly'
     setLeaving(true)
+    setFlying(true)
     setInteractive(false)
     momentum.current = null
     onFlyStartRef.current?.()
@@ -270,6 +321,7 @@ export function EventExpandPage({
     } catch {
       phase.current = 'open'
       setLeaving(false)
+      setFlying(false)
       setInteractive(true)
       onFlyCancelRef.current?.()
       const spring = prefersReducedMotion()
@@ -281,9 +333,10 @@ export function EventExpandPage({
 
   useEffect(() => {
     const main = document.querySelector('.app-main')
-    const previous = main instanceof HTMLElement ? main.style.overflow : ''
+    const panel = document.querySelector('.tab-panel:not(.is-inactive)')
+    const previous = panel instanceof HTMLElement ? panel.style.overflow : ''
+    if (panel instanceof HTMLElement) panel.style.overflow = 'hidden'
     if (main instanceof HTMLElement) {
-      main.style.overflow = 'hidden'
       // The tab bar sits outside this region and stays clickable.
       main.inert = true
     }
@@ -314,12 +367,11 @@ export function EventExpandPage({
       cancelled = true
       generation.current += 1
       stopPlayback()
+      stopSourceWatch()
       momentum.current = null
       window.removeEventListener('resize', onResize)
-      if (main instanceof HTMLElement) {
-        main.style.overflow = previous
-        main.inert = false
-      }
+      if (panel instanceof HTMLElement) panel.style.overflow = previous
+      if (main instanceof HTMLElement) main.inert = false
     }
     // Motion values and playFrame are stable for the lifetime of this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -466,7 +518,12 @@ export function EventExpandPage({
   return createPortal(
     <motion.div
       ref={sheetRef}
-      className={leaving ? 'event-expand is-closing' : 'event-expand'}
+      className={
+        'event-expand' +
+        (leaving ? ' is-closing' : '') +
+        (flying ? ' is-flying' : '') +
+        (cardShown ? ' is-card-shown' : '')
+      }
       role="dialog"
       aria-modal="false"
       aria-labelledby="event-expand-title"

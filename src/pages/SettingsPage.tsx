@@ -7,7 +7,7 @@ import {
 } from '../lib/location'
 import { api } from '../api/client'
 import { dispatchFeedRefresh } from '../lib/feedEvents'
-import { getSessionId, resetLocalAccount } from '../lib/session'
+import { getSessionId, resetEverythingLocal, resetLocalAccount } from '../lib/session'
 import {
   MAX_RADIUS,
   MIN_RADIUS,
@@ -24,7 +24,7 @@ export function SettingsPage() {
   const [confirmation, setConfirmation] = useState<'radius' | 'location' | 'feed' | null>(null)
   const [error, setError] = useState('')
   const [feedRefreshing, setFeedRefreshing] = useState(false)
-  const [confirmingReset, setConfirmingReset] = useState(false)
+  const [confirmingReset, setConfirmingReset] = useState<'account' | 'everything' | null>(null)
   const [resetting, setResetting] = useState(false)
   const cancelResetRef = useRef<HTMLButtonElement>(null)
 
@@ -81,7 +81,7 @@ export function SettingsPage() {
     if (!confirmingReset) return
     cancelResetRef.current?.focus()
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !resetting) setConfirmingReset(false)
+      if (event.key === 'Escape' && !resetting) setConfirmingReset(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -100,6 +100,42 @@ export function SettingsPage() {
       setResetting(false)
     }
   }
+
+  const resetEverything = async () => {
+    setResetting(true)
+    setError('')
+    setConfirmation(null)
+    try {
+      await api.resetAccount(getSessionId())
+      resetEverythingLocal()
+      window.location.assign('/')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not reset everything.')
+      setResetting(false)
+    }
+  }
+
+  const resetCopy =
+    confirmingReset === 'everything'
+      ? {
+          titleId: 'reset-everything-title',
+          descId: 'reset-everything-desc',
+          title: 'Reset everything?',
+          description:
+            'This clears your interests, swipes, saved events, location, distance settings, and tutorials. The app will open like a first visit.',
+          confirm: 'Reset everything',
+          pending: 'Resetting…',
+          run: resetEverything,
+        }
+      : {
+          titleId: 'reset-account-title',
+          descId: 'reset-account-desc',
+          title: 'Reset your account?',
+          description: 'This clears your interests, swipes, and saved events.',
+          confirm: 'Reset account',
+          pending: 'Resetting…',
+          run: resetAccount,
+        }
 
   return (
     <div className="page settings-page">
@@ -211,35 +247,46 @@ export function SettingsPage() {
         <button
           type="button"
           className="btn btn-danger"
-          disabled={confirmingReset || resetting}
+          disabled={confirmingReset !== null || resetting}
           onClick={() => {
             setError('')
-            setConfirmingReset(true)
+            setConfirmingReset('account')
           }}
         >
           Reset account
         </button>
+        {import.meta.env.DEV ? (
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={confirmingReset !== null || resetting}
+            onClick={() => {
+              setError('')
+              setConfirmingReset('everything')
+            }}
+          >
+            DEV: Reset Everything
+          </button>
+        ) : null}
       </div>
       {confirmingReset
         ? createPortal(
             <div
               className="modal-backdrop settings-reset-backdrop"
               onClick={() => {
-                if (!resetting) setConfirmingReset(false)
+                if (!resetting) setConfirmingReset(null)
               }}
             >
               <div
                 className="settings-reset-dialog"
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby="reset-account-title"
-                aria-describedby="reset-account-desc"
+                aria-labelledby={resetCopy.titleId}
+                aria-describedby={resetCopy.descId}
                 onClick={(event) => event.stopPropagation()}
               >
-                <h2 id="reset-account-title">Reset your account?</h2>
-                <p id="reset-account-desc">
-                  This clears your interests, swipes, and saved events.
-                </p>
+                <h2 id={resetCopy.titleId}>{resetCopy.title}</h2>
+                <p id={resetCopy.descId}>{resetCopy.description}</p>
                 {error ? (
                   <p className="error" role="alert">
                     {error}
@@ -251,7 +298,7 @@ export function SettingsPage() {
                     type="button"
                     className="btn btn-ghost"
                     disabled={resetting}
-                    onClick={() => setConfirmingReset(false)}
+                    onClick={() => setConfirmingReset(null)}
                   >
                     Cancel
                   </button>
@@ -259,9 +306,9 @@ export function SettingsPage() {
                     type="button"
                     className="btn btn-danger"
                     disabled={resetting}
-                    onClick={() => void resetAccount()}
+                    onClick={() => void resetCopy.run()}
                   >
-                    {resetting ? 'Resetting…' : 'Reset account'}
+                    {resetting ? resetCopy.pending : resetCopy.confirm}
                   </button>
                 </div>
               </div>
